@@ -268,7 +268,7 @@ button:focus-visible,a:focus-visible,label:focus-visible,select:focus-visible{ou
   <div class="topstack">
   <header class="top">
     <div class="mark"><i></i><i></i><i></i></div>
-    <div class="brand">طبقات<small>LAYERS · v8</small></div>
+    <div class="brand">طبقات<small>LAYERS · v9</small></div>
     <div class="spacer"></div>
     <button class="ghost icon" id="btnZen" type="button" aria-label="تكبير المعاينة">⤢</button>
     <button class="ghost icon" id="btnHelp" type="button" aria-label="مساعدة">؟</button>
@@ -530,11 +530,25 @@ button:focus-visible,a:focus-visible,label:focus-visible,select:focus-visible{ou
       </div>
       <div class="row"><label>الصوت</label>
         <div class="seg" id="segAudio">
-          <button data-v="none" class="on">بدون</button>
+          <button data-v="none">بدون</button>
           <button data-v="direct">مباشر</button>
-          <button data-v="mix">مزج</button>
+          <button data-v="mix" class="on">مزج</button>
         </div>
       </div>
+      <div class="row"><label>محرك التصدير</label>
+        <div class="seg" id="segEngine">
+          <button data-v="fast" class="on">سريع</button>
+          <button data-v="rec">تسجيل</button>
+        </div>
+      </div>
+      <div class="row" id="rowSpeed"><label>سرعة السحب</label>
+        <div class="seg" id="segSpeed">
+          <button data-v="2">2x</button>
+          <button data-v="4" class="on">4x</button>
+          <button data-v="8">8x</button>
+        </div>
+      </div>
+      <p class="hint" id="engineInfo">—</p>
       <div class="row"><label>الوضع الآمن</label>
         <label class="switch" style="flex:1"><input type="checkbox" id="safeMode"> دقة 540 بلا صوت، أقل احتمال للانهيار</label>
       </div>
@@ -650,7 +664,9 @@ const S = {
   aspect: '9:16',
   res: 720,
   bitrate: 6,
-  audioMode: 'none',
+  audioMode: 'mix',
+  fast: true,
+  speed: 4,
   safeMode: false,
   bg:   { img:null, video:null, opacity:1, blur:0, scale:1, color:'#0D0A12', fit:'cover', vol:0 },
   main: { video:null, fit:'cover', scale:1, x:0.5, y:0.5, opacity:1, radius:0, vol:1 },
@@ -674,6 +690,7 @@ let uid = 1;
 /* ============ media elements (persistent — never recreated) ============ */
 const vMain = $('#vMain'), vBg = $('#vBg');
 const urls = { main:null, bg:null, bgImg:null, logo:null, ava:null };
+let mainFile = null, bgFile = null;
 function setURL(key, file){
   if(urls[key]) { try{ URL.revokeObjectURL(urls[key]); }catch(e){} }
   urls[key] = file ? URL.createObjectURL(file) : null;
@@ -1191,6 +1208,7 @@ $('#fMain').addEventListener('change', e=>{
   loadVideoInto(vMain, f, 'main', ok=>{
     if(!ok) return;
     S.main.video = vMain;
+    mainFile = f;
     S.trimIn = 0; S.trimOut = null;
     setFileLabel('#mainVidBtn', f.name, ()=>{ clearMain(); });
     vMain.currentTime = 0.02;
@@ -1199,7 +1217,7 @@ $('#fMain').addEventListener('change', e=>{
   });
 });
 function clearMain(){
-  pause(); S.main.video = null; vMain.removeAttribute('src'); vMain.load();
+  pause(); S.main.video = null; mainFile = null; vMain.removeAttribute('src'); vMain.load();
   setFileLabel('#mainVidBtn', null); refreshAll();
 }
 
@@ -1208,7 +1226,8 @@ $('#fBgVid').addEventListener('change', e=>{
   loadVideoInto(vBg, f, 'bg', ok=>{
     if(!ok) return;
     S.bg.video = vBg;
-    setFileLabel('#bgVidBtn', f.name, ()=>{ S.bg.video=null; vBg.removeAttribute('src'); vBg.load(); setFileLabel('#bgVidBtn', null); refreshAll(); });
+    bgFile = f;
+    setFileLabel('#bgVidBtn', f.name, ()=>{ S.bg.video=null; bgFile=null; vBg.removeAttribute('src'); vBg.load(); setFileLabel('#bgVidBtn', null); refreshAll(); });
     vBg.currentTime = 0.02;
     refreshAll();
   });
@@ -1341,6 +1360,19 @@ bindSeg('#segAspect', v=>{ S.aspect = v; sizeCanvas(); });
 bindSeg('#segRes', v=>{ S.res = Number(v); sizeCanvas(); });
 bindRange('#bitrate', '#vBitrate', n=>{ S.bitrate = n; });
 bindSeg('#segAudio', v=>{ S.audioMode = v; });
+bindSeg('#segEngine', v=>{ S.fast = (v === 'fast'); $('#rowSpeed').hidden = !S.fast; updateEngineInfo(); });
+bindSeg('#segSpeed', v=>{ S.speed = Number(v); });
+function updateEngineInfo(){
+  const el = $('#engineInfo');
+  if(!fastSupported()){
+    el.textContent = 'المحرك السريع غير مدعوم هنا، سيُستخدم التسجيل تلقائياً.';
+    return;
+  }
+  const aud = fastAudioSupported() ? 'مع الصوت' : 'بلا صوت (يحتاج iOS 26 فأحدث)';
+  el.textContent = S.fast
+    ? ('سريع: يرمّز بعتاد الجهاز ' + aud + '. لو فشل يعود للتسجيل تلقائياً.')
+    : 'تسجيل: بزمن حقيقي، مضمون لكنه أبطأ.';
+}
 $('#safeMode').addEventListener('change', e=>{
   S.safeMode = e.target.checked;
   if(S.safeMode){
@@ -1611,6 +1643,30 @@ let recorder = null, chunks = [], recStream = null, elStream = null, wakeLock = 
 
 function startExport(ev){
   if(ev && ev.preventDefault) ev.preventDefault();
+  if(S.exporting){ abortExport(); return; }
+
+  if(S.fast && fastSupported()){
+    fastAbort = false;
+    S.exporting = true;
+    $('#btnExport').classList.add('rec');
+    $('#btnExport').textContent = 'إيقاف';
+    $('#statusBar').hidden = false;
+    setStep('ترميز سريع...');
+    $('#expBar').style.width = '0%';
+    const t0 = performance.now();
+    fastExport().then(r=>{
+      cleanupExport();
+      const secs = (performance.now() - t0)/1000;
+      showResult(r.blob, true, 'سريع · ' + r.frames + ' إطار · ' + secs.toFixed(1) + ' ث');
+    }).catch(err=>{
+      cleanupExport();
+      const msg = (err && err.message) ? err.message : String(err);
+      toast('المحرك السريع فشل، تحوّل للتسجيل: ' + msg);
+      setTimeout(()=>{ try{ runExport(); }catch(e){ cleanupExport(); } }, 700);
+    });
+    return;
+  }
+
   try{ runExport(); }
   catch(err){
     cleanupExport();
@@ -1727,6 +1783,233 @@ function runExport(){
   }
 }
 
+/* ============================================================
+   FAST EXPORT — WebCodecs
+   Encodes with the device hardware encoder instead of recording
+   in real time. Video frames come from requestVideoFrameCallback
+   while the source plays at an elevated rate, so we capture every
+   frame the decoder actually presents and stamp it with its true
+   mediaTime. Audio is decoded from the original file, mixed with
+   the user's levels, and encoded to AAC separately.
+   ============================================================ */
+const MUXER_URL = 'https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.1/build/mp4-muxer.min.js';
+let muxerLoading = null;
+function loadMuxer(){
+  if(window.Mp4Muxer) return Promise.resolve(window.Mp4Muxer);
+  if(muxerLoading) return muxerLoading;
+  muxerLoading = new Promise((res, rej)=>{
+    const s = document.createElement('script');
+    s.src = MUXER_URL;
+    s.onload = ()=> window.Mp4Muxer ? res(window.Mp4Muxer) : rej(new Error('لم تُحمّل مكتبة الدمج'));
+    s.onerror = ()=> rej(new Error('تعذّر تحميل مكتبة الدمج، تحقّق من الاتصال'));
+    document.head.appendChild(s);
+  });
+  return muxerLoading;
+}
+
+function fastSupported(){
+  return !!(window.VideoEncoder && window.EncodedVideoChunk && window.VideoFrame);
+}
+function fastAudioSupported(){
+  return !!(window.AudioEncoder && window.AudioData);
+}
+
+/* pick an H.264 level that covers the frame size */
+function avcCodec(w, h){
+  const mb = Math.ceil(w/16) * Math.ceil(h/16);
+  if(mb <= 3600)  return 'avc1.42001f'; // level 3.1
+  if(mb <= 8192)  return 'avc1.420028'; // level 4.0
+  return 'avc1.420033';                 // level 5.1
+}
+
+async function decodeAudioTrack(file, gain, outRate, outCh, startT, dur){
+  if(!file) return null;
+  const AC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const DC = window.AudioContext || window.webkitAudioContext;
+  if(!AC || !DC) return null;
+  let buf;
+  try{
+    const ab = await file.arrayBuffer();
+    const tmp = new DC();
+    buf = await new Promise((res, rej)=>{
+      const p = tmp.decodeAudioData(ab, res, rej);
+      if(p && p.then) p.then(res, rej);
+    });
+    try{ tmp.close(); }catch(e){}
+  }catch(e){ return null; }
+  if(!buf) return null;
+
+  const frames = Math.max(1, Math.round(dur * outRate));
+  const off = new AC(outCh, frames, outRate);
+  const src = off.createBufferSource();
+  src.buffer = buf;
+  const g = off.createGain();
+  g.gain.value = gain;
+  src.connect(g); g.connect(off.destination);
+  src.start(0, Math.min(startT, Math.max(0, buf.duration - 0.01)));
+  return await off.startRendering();
+}
+
+function mixBuffers(a, b, frames, ch){
+  const out = [];
+  for(let c = 0; c < ch; c++){
+    const arr = new Float32Array(frames);
+    for(const buf of [a, b]){
+      if(!buf) continue;
+      const src = buf.getChannelData(Math.min(c, buf.numberOfChannels - 1));
+      const n = Math.min(frames, src.length);
+      for(let i = 0; i < n; i++) arr[i] += src[i];
+    }
+    for(let i = 0; i < frames; i++){
+      const v = arr[i];
+      arr[i] = v > 1 ? 1 : (v < -1 ? -1 : v);
+    }
+    out.push(arr);
+  }
+  return out;
+}
+
+let fastAbort = false;
+
+async function fastExport(){
+  if(!fastSupported()) throw new Error('WebCodecs غير متاح، سيُستخدم التسجيل');
+  const Mp4 = await loadMuxer();
+
+  const W = canvas.width, H = canvas.height;
+  const start = trimStart(), dur = clipDuration();
+  const el = timingEl();
+  const useAudio = (!S.safeMode && S.audioMode !== 'none' && fastAudioSupported() && (mainFile || bgFile));
+
+  crumb('سريع 1. تجهيز الدامج ' + W + 'x' + H);
+  const AUDIO_RATE = 48000, AUDIO_CH = 2;
+  const muxer = new Mp4.Muxer({
+    target: new Mp4.ArrayBufferTarget(),
+    video: { codec:'avc', width: W, height: H },
+    audio: useAudio ? { codec:'aac', numberOfChannels: AUDIO_CH, sampleRate: AUDIO_RATE } : undefined,
+    fastStart: 'in-memory'
+  });
+
+  crumb('سريع 2. تهيئة مرمّز الفيديو');
+  let encErr = null;
+  const venc = new VideoEncoder({
+    output: (chunk, meta)=>{ try{ muxer.addVideoChunk(chunk, meta); }catch(e){ encErr = e; } },
+    error: e => { encErr = e; }
+  });
+  venc.configure({
+    codec: avcCodec(W, H),
+    width: W, height: H,
+    bitrate: (S.safeMode ? 3 : S.bitrate) * 1000000,
+    framerate: 30,
+    latencyMode: 'quality'
+  });
+
+  /* ---------- audio ---------- */
+  if(useAudio){
+    crumb('سريع 3. فك ترميز الصوت');
+    setStep('يحضّر الصوت...');
+    await new Promise(r=>setTimeout(r, 0));
+    const [aMain, aBg] = await Promise.all([
+      decodeAudioTrack(mainFile, S.main.vol, AUDIO_RATE, AUDIO_CH, start, dur),
+      decodeAudioTrack(bgFile,  S.bg.vol,  AUDIO_RATE, AUDIO_CH, 0,     dur)
+    ]);
+    if(aMain || aBg){
+      crumb('سريع 4. ترميز الصوت AAC');
+      const frames = Math.round(dur * AUDIO_RATE);
+      const chans = mixBuffers(aMain, aBg, frames, AUDIO_CH);
+      const aenc = new AudioEncoder({
+        output: (chunk, meta)=>{ try{ muxer.addAudioChunk(chunk, meta); }catch(e){ encErr = e; } },
+        error: e => { encErr = e; }
+      });
+      aenc.configure({ codec:'mp4a.40.2', sampleRate: AUDIO_RATE, numberOfChannels: AUDIO_CH, bitrate: 128000 });
+      const CH = 1024;
+      for(let off = 0; off < frames; off += CH){
+        const n = Math.min(CH, frames - off);
+        const inter = new Float32Array(n * AUDIO_CH);
+        for(let c = 0; c < AUDIO_CH; c++){
+          const s = chans[c];
+          for(let i = 0; i < n; i++) inter[i*AUDIO_CH + c] = s[off + i];
+        }
+        const ad = new AudioData({
+          format:'f32', sampleRate: AUDIO_RATE, numberOfFrames: n,
+          numberOfChannels: AUDIO_CH, timestamp: Math.round((off/AUDIO_RATE)*1e6), data: inter
+        });
+        aenc.encode(ad); ad.close();
+        if(off % (CH*80) === 0) await new Promise(r=>setTimeout(r, 0));
+      }
+      await aenc.flush();
+      aenc.close();
+    }
+  }
+
+  /* ---------- video frames ---------- */
+  crumb('سريع 5. سحب الإطارات وترميزها');
+  let n = 0;
+  const push = (tSec)=>{
+    if(encErr) throw encErr;
+    render();
+    const ts = Math.max(0, Math.round((tSec - start) * 1e6));
+    const vf = new VideoFrame(canvas, { timestamp: ts, duration: Math.round(1e6/30) });
+    venc.encode(vf, { keyFrame: (n % 60) === 0 });
+    vf.close();
+    n++;
+    $('#expBar').style.width = Math.min(100, ((tSec - start)/dur)*100) + '%';
+  };
+
+  if(el){
+    const rate = S.safeMode ? 2 : S.speed;
+    try{ vMain.muted = true; vBg.muted = true; }catch(e){}
+    el.currentTime = start;
+    await new Promise(r=>{
+      const on = ()=>{ el.removeEventListener('seeked', on); r(); };
+      el.addEventListener('seeked', on);
+      setTimeout(r, 900);
+    });
+    try{ vMain.playbackRate = rate; }catch(e){}
+    try{ vBg.playbackRate = rate; }catch(e){}
+    const jobs = [];
+    if(S.main.video) jobs.push(vMain.play());
+    if(S.bg.video) jobs.push(vBg.play());
+    await Promise.allSettled(jobs);
+
+    const hasRVFC = typeof el.requestVideoFrameCallback === 'function';
+    await new Promise((resolve, reject)=>{
+      let last = -1;
+      const stop = ()=>{ try{ el.pause(); }catch(e){} resolve(); };
+      const guard = setTimeout(()=>{ stop(); }, (dur/Math.max(1,rate))*1000 + 20000);
+      const step = (now, meta)=>{
+        if(fastAbort){ clearTimeout(guard); stop(); return; }
+        const t = meta ? meta.mediaTime : el.currentTime;
+        if(t >= trimEnd() - 0.005 || el.ended){ clearTimeout(guard); stop(); return; }
+        if(t > last + 0.004){
+          last = t;
+          try{ push(t); }catch(e){ clearTimeout(guard); try{ el.pause(); }catch(x){} reject(e); return; }
+        }
+        if(hasRVFC) el.requestVideoFrameCallback(step);
+        else requestAnimationFrame(()=>step(0, null));
+      };
+      if(hasRVFC) el.requestVideoFrameCallback(step);
+      else requestAnimationFrame(()=>step(0, null));
+    });
+    try{ vMain.playbackRate = 1; vBg.playbackRate = 1; vMain.muted = false; vBg.muted = false; }catch(e){}
+  } else {
+    const total = Math.round(dur * 30);
+    for(let i = 0; i < total; i++){
+      if(fastAbort) break;
+      push(start + i/30);
+      if(i % 12 === 0) await new Promise(r=>setTimeout(r, 0));
+    }
+  }
+
+  if(!n) throw new Error('لم يُلتقط أي إطار');
+  crumb('سريع 6. إنهاء الملف · ' + n + ' إطار');
+  await venc.flush();
+  venc.close();
+  if(encErr) throw encErr;
+  muxer.finalize();
+  crumbClear();
+  return { blob: new Blob([muxer.target.buffer], { type:'video/mp4' }), frames: n };
+}
+
 /* 3 second canvas-only recording, tells us if capture works at all on this device */
 function quickTest(){
   const d = $('#diag');
@@ -1760,7 +2043,19 @@ function finishExport(){
   pause();
   try{ if(recorder && recorder.state !== 'inactive') recorder.stop(); }catch(e){ cleanupExport(); }
 }
-function abortExport(){ finishExport(); }
+function abortExport(){ fastAbort = true; finishExport(); }
+
+function showResult(blob, isMp4, note){
+  if(!blob || !blob.size){ toast('لم يُنتج ملف، حاول مرة أخرى'); return; }
+  const url = URL.createObjectURL(blob);
+  const name = 'tabaqat-' + Date.now() + (isMp4 ? '.mp4' : '.webm');
+  $('#outVideo').src = url;
+  const a = $('#outDownload');
+  a.href = url; a.download = name;
+  $('#outMeta').textContent = (isMp4 ? 'MP4' : 'WebM') + ' · ' + (blob.size/1048576).toFixed(1)
+    + ' م.ب · ' + canvas.width + '×' + canvas.height + (note ? ' · ' + note : '');
+  $('#modalOut').classList.add('on');
+}
 
 function onRecStop(){
   crumbClear();
@@ -1768,15 +2063,7 @@ function onRecStop(){
   const isMp4 = mime.indexOf('mp4') !== -1;
   const blob = new Blob(chunks, { type: mime });
   cleanupExport();
-  if(!blob.size){ toast('لم يُسجَّل شيء، حاول مرة أخرى'); return; }
-  const url = URL.createObjectURL(blob);
-  const name = 'tabaqat-' + Date.now() + (isMp4 ? '.mp4' : '.webm');
-  $('#outVideo').src = url;
-  const a = $('#outDownload');
-  a.href = url; a.download = name;
-  $('#outMeta').textContent = (isMp4 ? 'MP4' : 'WebM') + ' · ' + (blob.size/1048576).toFixed(1) + ' م.ب · ' + canvas.width + '×' + canvas.height
-    + (isMp4 ? '' : ' · متصفحك لا يدعم MP4 مباشرة');
-  $('#modalOut').classList.add('on');
+  showResult(blob, isMp4, isMp4 ? 'تسجيل' : 'تسجيل · متصفحك لا يدعم MP4');
 }
 
 function setStep(msg){
@@ -1788,6 +2075,8 @@ function setStep(msg){
 }
 function cleanupExport(){
   S.exporting = false;
+  fastAbort = false;
+  try{ vMain.playbackRate = 1; vBg.playbackRate = 1; vMain.muted = false; vBg.muted = false; }catch(e){}
   $('#btnExport').classList.remove('rec');
   $('#btnExport').textContent = 'تصدير';
   $('#statusBar').hidden = true;
@@ -1876,6 +2165,9 @@ if(lockdownLikely()){
     b.classList.toggle('on', b.dataset.v === 'none');
     if(b.dataset.v !== 'none'){ b.disabled = true; b.style.opacity = '.35'; }
   });
+  S.fast = false;
+  $$('#segEngine button').forEach(b=>b.classList.toggle('on', b.dataset.v === 'rec'));
+  $('#rowSpeed').hidden = true;
   sizeCanvas();
 }
 $('#lockDismiss').addEventListener('click', ()=>{ $('#lockWarn').hidden = true; });
@@ -1896,6 +2188,13 @@ $('#lockDismiss').addEventListener('click', ()=>{ $('#lockWarn').hidden = true; 
 })();
 $('#crashClose').addEventListener('click', ()=> $('#modalCrash').classList.remove('on'));
 $('#modalCrash').addEventListener('click', e=>{ if(e.target.id === 'modalCrash') $('#modalCrash').classList.remove('on'); });
+
+if(!fastSupported()){
+  S.fast = false;
+  $$('#segEngine button').forEach(b=>b.classList.toggle('on', b.dataset.v === 'rec'));
+  $('#rowSpeed').hidden = true;
+}
+updateEngineInfo();
 
 $('#fmtInfo').textContent = (function(){
   const m = pickMime(true);
