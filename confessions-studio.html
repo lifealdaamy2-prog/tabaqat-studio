@@ -26,6 +26,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
+[hidden]{display:none!important}
 body{
   background:var(--bg);
   color:var(--text);
@@ -318,6 +319,8 @@ input[type=range]::-moz-range-thumb{
       <div class="field">
         <label class="lb">مدة الفيديو</label>
         <div class="slider"><input type="range" id="dur" min="3" max="300" value="20"><span class="val" id="durV">20 ث</span></div>
+        <button type="button" id="durFit" hidden style="width:100%;margin-top:12px">اجعل المدة بطول فيديو الخلفية</button>
+        <p class="hint">حرّك الشريط لتحديد المدة بنفسك، وعند رفع فيديو خلفية يصبح أقصى الشريط هو طول ذلك الفيديو.</p>
       </div>
       <div class="field">
         <label class="lb">تلاشي الصوت عند البداية والنهاية</label>
@@ -1043,8 +1046,26 @@ function bindChips(id,key){
   });
 }
 function syncDurUI(){
-  $('dur').disabled=!!S.autoDur;
+  $('swAutoDur').setAttribute('aria-pressed',String(!!S.autoDur));
   $('speedWrap').hidden=!S.autoDur;
+}
+function manualDur(){
+  if(!S.autoDur) return;
+  S.autoDur=false; syncDurUI(); save();
+}
+/* أقصى مدة يدوية = طول فيديو الخلفية إن وجد */
+function bgDur(){
+  return (bgVideo && isFinite(bgVideo.duration) && bgVideo.duration>0) ? Math.max(3,Math.floor(bgVideo.duration)) : 0;
+}
+function setDurMax(){
+  const d=bgDur();
+  $('dur').max = d || 300;
+  $('durFit').hidden = !d;
+  if(d){
+    $('durFit').textContent='اجعل المدة بطول فيديو الخلفية ('+fmt(d)+')';
+    if(!S.autoDur && S.dur>d) S.dur=d;
+  }
+  LKey=''; markDirty();
 }
 
 $('txt').value=S.text;
@@ -1067,6 +1088,11 @@ bindRange('cw','cwV','cardW',v=>v/100,(s,r)=>r+'%');
 bindRange('ct','ctV','cardT',v=>v/100,(s,r)=>r+'%');
 $('ct').addEventListener('change',save);
 bindRange('dur','durV','dur',v=>v,s=>fmtDur(s));
+$('dur').addEventListener('input',manualDur);
+$('durFit').addEventListener('click',()=>{
+  const d=bgDur(); if(!d) return;
+  S.dur=d; manualDur(); LKey='';
+});
 bindRange('fade','fadeV','fade',v=>v/10,s=>s.toFixed(1)+' ث');
 bindRange('start','startV','start',v=>audioBuffer?(v/1000)*Math.max(0.1,audioBuffer.duration-0.1):0,s=>fmt(s));
 
@@ -1090,6 +1116,7 @@ $('avatar').addEventListener('change',e=>{
 $('bgImg').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
   if(bgVideo){ bgVideo.pause(); bgVideo=null; }
+  setDurMax();
   const img=new Image(); img.onload=()=>{ bgImage=img; markDirty(); }; img.src=URL.createObjectURL(f);
 });
 $('bgVid').addEventListener('change',e=>{
@@ -1098,11 +1125,11 @@ $('bgVid').addEventListener('change',e=>{
   const v=document.createElement('video');
   v.src=URL.createObjectURL(f); v.muted=true; v.loop=true; v.playsInline=true;
   v.setAttribute('playsinline','');
-  v.addEventListener('loadeddata',()=>{ bgVideo=v; markDirty(); v.play().catch(()=>{}); });
+  v.addEventListener('loadeddata',()=>{ bgVideo=v; setDurMax(); v.play().catch(()=>{}); });
 });
 $('bgClear').addEventListener('click',()=>{
   if(bgVideo){ bgVideo.pause(); bgVideo=null; }
-  bgImage=null; markDirty();
+  bgImage=null; setDurMax();
   $('bgImg').value=''; $('bgVid').value='';
 });
 
