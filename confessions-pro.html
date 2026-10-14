@@ -371,7 +371,16 @@ input[type=range]::-moz-range-thumb{
           <button class="chip" data-v="full" aria-pressed="true" type="button">صفحة كاملة</button>
           <button class="chip" data-v="card" aria-pressed="false" type="button">كارت تغريدة</button>
         </div>
-        <p class="hint">الصفحة الكاملة تكتب الاعتراف بخط كبير على الخلفية مباشرة وتملأ الإطار، والكارت هو الشكل القديم.</p>
+        <p class="hint">الصفحة الكاملة تكتب الاعتراف على الخلفية مباشرة وتملأ الإطار، والكارت هو الشكل القديم.</p>
+      </div>
+      <div class="field">
+        <label class="lb">كمية النص في الصفحة</label>
+        <div class="chips" id="density">
+          <button class="chip" data-v="260" aria-pressed="false" type="button">قليلة وخط كبير</button>
+          <button class="chip" data-v="420" aria-pressed="true" type="button">متوسطة</button>
+          <button class="chip" data-v="600" aria-pressed="false" type="button">كثيفة</button>
+        </div>
+        <p class="hint">كلما زادت قلّ عدد الصفحات وقصر الفيديو.</p>
       </div>
       <div class="field">
         <label class="lb">لون الكارت</label>
@@ -434,7 +443,7 @@ const S = {
   name:'د. كريم', user:'TheDrKarim',
   verified:true, showMeta:false, meta:'',
   tg:'@DRKRE', tw:'@TheDrKarim', sigPos:'bottom', sigPill:true,
-  style:'full', theme:'dim', font:'Tajawal', tsize:1, cardW:.86, cardT:0,
+  density:'420', style:'full', theme:'dim', font:'Tajawal', tsize:1, cardW:.86, cardT:0,
   dim:.45, blur:0, zoom:1,
   dur:20, start:0, fade:.8,
   split:true, autoDur:true, speed:'16',
@@ -581,9 +590,9 @@ function paginate(text,maxW,maxLines){
 function paginateBalanced(text,maxW,maxLines){ return paginate(text,maxW,maxLines); }
 
 /* مقاييس تتكيف مع المقاس: k من الضلع الأقصر، وعرض الكارت لا يتجاوز حداً مريحاً للقراءة في المقاس العريض */
-function FULL_PAD(W,H,k){ return (W>H ? 160 : 84)*k; }
-function FULL_TOP(W,H,k){ return (H/W>1.5 ? 300 : 190)*k; }
-function FULL_BOTTOM(W,H,k){ return (H/W>1.5 ? 300 : 210)*k; }
+function FULL_PAD(W,H,k){ return (W>H ? 120 : 56)*k; }
+function FULL_TOP(W,H,k){ return (H/W>1.5 ? 250 : 160)*k; }
+function FULL_BOTTOM(W,H,k){ return (H/W>1.5 ? 240 : 150)*k; }
 function FULL_TEXT_H(W,H,k){ return H-FULL_TOP(W,H,k)-FULL_BOTTOM(W,H,k); }
 function KK(W,H){ return Math.min(W,H)/1080; }
 function cardWidth(W,H){ return Math.min(W*S.cardW, H*1.25); }
@@ -594,7 +603,7 @@ function fmtDur(s){ return s>=60 ? fmt(s) : s+' ث'; }
 
 function layout(){
   const W=S.W, H=S.H, k=KK(W,H), fam=S.font;
-  const key=[S.style,S.text,fam,S.tsize,S.cardW,W,H,S.split,S.autoDur,S.speed,S.autoDur?0:S.dur,fontTick].join('|');
+  const key=[S.density,S.style,S.text,fam,S.tsize,S.cardW,W,H,S.split,S.autoDur,S.speed,S.autoDur?0:S.dur,fontTick].join('|');
   if(L && key===LKey) return L;
 
   const inner=cardWidth(W,H)-112*k, maxH=textMaxH(W,H);
@@ -608,12 +617,12 @@ function layout(){
     /* صفحة كاملة: أكبر خط ممكن بحيث يبقى كل جزء نحو 230 حرفاً، فتمتلئ الصفحة وتبقى سهلة القراءة */
     const fw=W-2*FULL_PAD(W,H,k), fh=FULL_TEXT_H(W,H,k);
     const flat=raw.replace(MARK_LINE,'$1');
-    const ideal=Math.max(1,Math.ceil(flat.replace(/\s+/g,'').length/(S.split?200:100000)));
-    const maxS=Math.round(84*k*S.tsize), minS=Math.round(34*k);
+    const ideal=Math.max(1,Math.ceil(flat.replace(/\s+/g,'').length/(S.split?(+S.density||420):100000)));
+    const maxS=Math.round(70*k*S.tsize), minS=Math.round(28*k);
     let chosen=null;
-    for(let sz=maxS; sz>=minS; sz-=3){
+    for(let sz=maxS; sz>=minS; sz-=2){
       ctx.font='500 '+sz+'px "'+fam+'", sans-serif';
-      const ml=Math.max(2,Math.floor(fh/(sz*1.62)));
+      const ml=Math.max(2,Math.floor(fh/(sz*1.5)));
       const pg=S.split?paginate(raw,fw,ml):[flat.trim()];
       const ok=pg.every(t=>wrap(t,fw).length<=ml);
       if(ok && pg.length<=ideal){ chosen={pg,sz}; break; }
@@ -658,8 +667,8 @@ function layout(){
   const starts=[]; let acc=0;
   for(const d of durs){ starts.push(acc); acc+=d; }
 
-  L={pages,size,lh:size*(S.style==='full'?1.62:1.75),durs,starts,rows:Math.max.apply(null,pages.map(p=>p.length))};
-  LKey=[S.style,S.text,fam,S.tsize,S.cardW,W,H,S.split,S.autoDur,S.speed,S.autoDur?0:S.dur,fontTick].join('|');
+  L={pages,size,lh:size*(S.style==='full'?1.5:1.75),durs,starts,rows:Math.max.apply(null,pages.map(p=>p.length))};
+  LKey=[S.density,S.style,S.text,fam,S.tsize,S.cardW,W,H,S.split,S.autoDur,S.speed,S.autoDur?0:S.dur,fontTick].join('|');
   if(viewPage>n-1) viewPage=n-1;
   syncParts();
   return L;
@@ -852,7 +861,7 @@ function drawFull(Lr,pi,alpha,frac,W,H,k,fam){
   const n=Lr.pages.length, lines=Lr.pages[pi], size=Lr.size, lh=Lr.lh;
   const pad=FULL_PAD(W,H,k), right=W-pad, top=FULL_TOP(W,H,k), th=FULL_TEXT_H(W,H,k);
   /* الهوية أعلى الصفحة */
-  const av=86*k, avX=right-av, avY=top-av-56*k;
+  const av=76*k, avX=right-av, avY=top-av-36*k;
   ctx.save();
   ctx.beginPath(); ctx.arc(avX+av/2,avY+av/2,av/2,0,Math.PI*2); ctx.clip();
   if(avatarImg){
@@ -890,7 +899,7 @@ function drawFull(Lr,pi,alpha,frac,W,H,k,fam){
   ctx.restore();
   /* شريط التقدم */
   if(n>1){
-    const inner=W-2*pad, sg=10*k, sh=7*k, sw=(inner-(n-1)*sg)/n, sy=top+th+40*k;
+    const inner=W-2*pad, sg=10*k, sh=7*k, sw=(inner-(n-1)*sg)/n, sy=top+th+22*k;
     for(let i=0;i<n;i++){
       const sx=right-(i+1)*sw-i*sg;
       ctx.fillStyle='rgba(255,255,255,.22)'; roundRect(ctx,sx,sy,sw,sh,sh/2); ctx.fill();
@@ -1200,7 +1209,7 @@ bindSwitch('swMeta','showMeta',()=>{ $('metaWrap').hidden=!S.showMeta; });
 bindSwitch('swPill','sigPill');
 bindSwitch('swSplit','split',()=>{ viewPage=0; });
 bindSwitch('swAutoDur','autoDur',syncDurUI);
-bindChips('theme','theme'); bindChips('style','style'); bindChips('sigPos','sigPos'); bindChips('speed','speed');
+bindChips('theme','theme'); bindChips('style','style'); bindChips('density','density'); bindChips('sigPos','sigPos'); bindChips('speed','speed');
 
 bindRange('dim','dimV','dim',v=>v/100,(s,r)=>r+'%');
 bindRange('blur','blurV','blur',v=>v,(s,r)=>r);
@@ -1314,7 +1323,7 @@ function save(){
       await store.set(JSON.stringify({
         name:S.name,user:S.user,tg:S.tg,tw:S.tw,
         theme:S.theme,font:S.font,sigPos:S.sigPos,sigPill:S.sigPill,verified:S.verified,
-        split:S.split,autoDur:S.autoDur,speed:S.speed,cardT:S.cardT,fmt:S.fmt,style:S.style
+        split:S.split,autoDur:S.autoDur,speed:S.speed,cardT:S.cardT,fmt:S.fmt,style:S.style,density:S.density
       }));
     }catch(e){}
   },600);
@@ -1334,6 +1343,7 @@ async function load(){
     $('swSplit').setAttribute('aria-pressed',String(!!S.split));
     $('swAutoDur').setAttribute('aria-pressed',String(!!S.autoDur));
     document.querySelectorAll('#theme .chip').forEach(c=>c.setAttribute('aria-pressed',String(c.dataset.v===S.theme)));
+    document.querySelectorAll('#density .chip').forEach(c=>c.setAttribute('aria-pressed',String(c.dataset.v===String(S.density||'420'))));
     document.querySelectorAll('#style .chip').forEach(c=>c.setAttribute('aria-pressed',String(c.dataset.v===(S.style||'full'))));
     document.querySelectorAll('#sigPos .chip').forEach(c=>c.setAttribute('aria-pressed',String(c.dataset.v===S.sigPos)));
     document.querySelectorAll('#speed .chip').forEach(c=>c.setAttribute('aria-pressed',String(c.dataset.v===String(S.speed))));
