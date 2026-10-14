@@ -1,0 +1,14 @@
+{
+  "name": "اعترافات إكس",
+  "short_name": "اعترافات إكس",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "confessions-x.html",
+  "display": "standalone",
+  "background_color": "#0B0F14",
+  "theme_color": "#0B0F14",
+  "icons": [
+    {"src": "confx-icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "confx-icon-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}
