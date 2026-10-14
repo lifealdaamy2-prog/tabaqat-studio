@@ -1,0 +1,15 @@
+{
+  "name": "كارت الخبر",
+  "short_name": "كارت الخبر",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "kart.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f1ec",
+  "theme_color": "#e0820f",
+  "icons": [
+    {"src": "kart-icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "kart-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
