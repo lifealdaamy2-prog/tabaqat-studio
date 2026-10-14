@@ -529,32 +529,47 @@ function pack(units,sep,maxW,maxLines,splitBig){
   if(cur.trim()) out.push(cur);
   return out;
 }
+/* تقسيم احترافي: يملأ كل جزء تقريباً بنفس عدد الأسطر، ويقطع عند نهاية جملة أو فاصلة قدر الإمكان */
+const SENT_END=/[.!?؟…]["»”)]?$/, SOFT_END=/[،,:؛;]$/;
+function paginateFlow(block,maxW,maxLines){
+  /* كلمات مع نوع الفاصل الذي يسبقها: مسافة أو سطر جديد */
+  const toks=[]; 
+  block.replace(/\n{2,}/g,'\n').split('\n').forEach((line,li)=>{
+    line.trim().split(/\s+/).filter(Boolean).forEach((w,wi)=>toks.push({w,nl:li>0&&wi===0}));
+  });
+  if(!toks.length) return [];
+  const join=arr=>arr.map((t,i)=>(i?(t.nl?'\n':' '):'')+t.w).join('');
+  const pages=[]; let i=0;
+  while(i<toks.length){
+    const remaining=wrap(join(toks.slice(i)),maxW).length;
+    if(remaining<=maxLines){ pages.push(join(toks.slice(i))); i=toks.length; break; }
+    const left=Math.ceil(remaining/maxLines);
+    const target=Math.min(maxLines,Math.ceil(remaining/left));
+    /* أطول قطعة لا تتجاوز الهدف */
+    let j=i, best=i;
+    while(j<toks.length && wrap(join(toks.slice(i,j+1)),maxW).length<=target){ j++; best=j; }
+    if(best===i) best=i+1;
+    /* ارجع إلى أقرب نهاية جملة ثم فاصلة، بشرط أن يبقى الجزء ممتلئاً بنسبة معقولة */
+    const minLines=Math.max(1,Math.ceil(target*0.7));
+    const pick=re=>{ for(let k=best;k>i+1;k--){
+      const end=toks[k-1].w, nextNl=toks[k]&&toks[k].nl;
+      if((re.test(end)||(re===SENT_END&&nextNl)) && wrap(join(toks.slice(i,k)),maxW).length>=minLines) return k; }
+      return 0; };
+    const cut=pick(SENT_END)||pick(SOFT_END)||best;
+    pages.push(join(toks.slice(i,cut))); i=cut;
+  }
+  if(i<toks.length) pages.push(join(toks.slice(i)));
+  return pages;
+}
 function paginate(text,maxW,maxLines){
   const pages=[];
-  const bySentence = p => {
-    const m=p.match(/[^.!?؟…]+[.!?؟…]*\s*/g);
-    const units=(m && m.join('').length===p.length) ? m : [p];
-    return pack(units,'',maxW,maxLines,s=>splitWords(s,maxW,maxLines));
-  };
   for(const b of text.split(MARK_LINE)){
-    const blk=(b||'').trim();
-    if(!blk) continue;
-    pack(blk.split('\n'),'\n',maxW,maxLines,bySentence).forEach(p=>{
-      p=p.trim(); if(p) pages.push(p);
-    });
+    const blk=(b||'').trim(); if(!blk) continue;
+    paginateFlow(blk,maxW,maxLines).forEach(p=>{ p=p.trim(); if(p) pages.push(p); });
   }
   return pages.length?pages:['…'];
 }
-/* نفس عدد الصفحات لكن بتوزيع متوازن حتى لا يبقى جزء أخير من سطر واحد */
-function paginateBalanced(text,maxW,maxLines){
-  const base=paginate(text,maxW,maxLines);
-  if(base.length<2) return base;
-  for(let m=Math.max(3,Math.ceil(maxLines*0.6)); m<maxLines; m++){
-    const p=paginate(text,maxW,m);
-    if(p.length<=base.length) return p;
-  }
-  return base;
-}
+function paginateBalanced(text,maxW,maxLines){ return paginate(text,maxW,maxLines); }
 
 /* مقاييس تتكيف مع المقاس: k من الضلع الأقصر، وعرض الكارت لا يتجاوز حداً مريحاً للقراءة في المقاس العريض */
 function KK(W,H){ return Math.min(W,H)/1080; }
