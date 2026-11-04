@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<title>تلقين</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;600;700&family=Alexandria:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--fs:40px;--op:.55;--accent:#ff3b30}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:'Readex Pro',system-ui,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.hidden{display:none!important}
+button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer}
+
+/* editor */
+#editor{position:fixed;inset:0;background:#0e0f12;display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 16px);gap:12px}
+#editor h1{margin:0;font-family:'Alexandria','Readex Pro',sans-serif;font-weight:900;font-size:28px}
+#editor p{margin:0;color:#9aa0aa;font-size:14px;line-height:1.7}
+#script{flex:1;width:100%;background:#1a1c21;color:#fff;border:1px solid #2a2d34;border-radius:16px;padding:16px;font-family:inherit;font-size:20px;line-height:1.8;resize:none;direction:rtl;-webkit-user-select:text;user-select:text;outline:none}
+#script:focus{border-color:#4a8cff}
+.big{background:#fff;color:#000;font-weight:700;font-size:18px;padding:16px;border-radius:16px;width:100%}
+
+/* camera */
+#cam{position:fixed;inset:0;background:#000}
+#vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#vid.mirror{transform:scaleX(-1)}
+#msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:32px;line-height:1.9;font-size:18px;background:rgba(0,0,0,.8);z-index:5}
+
+/* teleprompter box */
+#box{position:absolute;display:flex;flex-direction:column;background:rgba(0,0,0,var(--op));border-radius:18px;overflow:hidden;touch-action:none;z-index:2}
+#grip,#rsz{flex:none;height:30px;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:grab}
+#grip i,#rsz i{display:block;width:46px;height:5px;border-radius:3px;background:rgba(255,255,255,.55)}
+#rsz{height:26px}
+#rsz i{width:26px;transform:rotate(-0deg)}
+#vp{position:relative;flex:1;overflow:hidden;touch-action:none;-webkit-mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent)}
+#txt{white-space:pre-wrap;word-break:break-word;text-align:right;direction:rtl;font-size:var(--fs);line-height:1.75;font-weight:600;padding:0 18px;will-change:transform;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+#guide{position:absolute;right:0;left:0;top:35%;height:0;border-top:2px solid rgba(255,214,10,.55);pointer-events:none}
+#guide::after{content:"";position:absolute;right:6px;top:-7px;border:6px solid transparent;border-right-color:rgba(255,214,10,.9);transform:rotate(180deg)}
+
+/* top timer */
+#timer{position:absolute;top:calc(env(safe-area-inset-top) + 8px);left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);padding:5px 14px;border-radius:20px;font-weight:600;font-size:15px;display:flex;gap:8px;align-items:center;z-index:3;font-variant-numeric:tabular-nums}
+#timer b{width:10px;height:10px;border-radius:50%;background:var(--accent);animation:bl 1s infinite}
+@keyframes bl{50%{opacity:.25}}
+
+/* bottom bar */
+#bar{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-around;align-items:center;padding:14px 8px calc(env(safe-area-inset-bottom) + 16px);background:linear-gradient(transparent,rgba(0,0,0,.65));z-index:4}
+.ib{width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.ib svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ib svg .f{fill:#fff;stroke:none}
+.ib:disabled{opacity:.35}
+#rec{width:78px;height:78px;border-radius:50%;border:4px solid #fff;display:flex;align-items:center;justify-content:center}
+#rec span{display:block;width:58px;height:58px;border-radius:50%;background:var(--accent);transition:all .18s}
+#rec.on span{width:30px;height:30px;border-radius:8px}
+
+/* countdown */
+#count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Alexandria','Readex Pro',sans-serif;font-weight:900;font-size:170px;background:rgba(0,0,0,.35);z-index:6;text-shadow:0 4px 24px rgba(0,0,0,.6)}
+
+/* settings */
+#sheet{position:absolute;left:0;right:0;bottom:0;background:rgba(20,21,25,.96);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:22px 22px 0 0;padding:18px 20px calc(env(safe-area-inset-bottom) + 18px);z-index:7;display:flex;flex-direction:column;gap:14px}
+#sheet label{display:flex;flex-direction:column;gap:6px;font-size:15px}
+#sheet label span{display:flex;justify-content:space-between;color:#c8ccd4}
+#sheet input[type=range]{width:100%;accent-color:#4a8cff}
+.row{display:flex;justify-content:space-between;align-items:center;font-size:15px;color:#c8ccd4}
+.row input{width:22px;height:22px;accent-color:#4a8cff}
+#sheet .big{padding:13px;font-size:16px}
+
+/* result */
+#result{position:fixed;inset:0;background:#000;z-index:9;display:flex;flex-direction:column;gap:12px;padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 14px)}
+#result video{flex:1;min-height:0;width:100%;border-radius:16px;background:#111;object-fit:contain}
+#result .btns{display:flex;gap:10px}
+#result .btns button{flex:1}
+#result .sec{background:#25272d;color:#fff}
+</style>
+</head>
+<body>
+
+<!-- شاشة كتابة النص -->
+<section id="editor">
+  <h1>تلقين</h1>
+  <p>اكتب نصك هنا، ثم افتح الكاميرا، النص يظهر فوق صورتك أثناء التصوير ولا يدخل في الفيديو، قسّم الكلام إلى أسطر قصيرة ليسهل عليك قراءته</p>
+  <textarea id="script" placeholder="اكتب أو الصق نصك هنا" spellcheck="false"></textarea>
+  <button class="big" id="open">فتح الكاميرا</button>
+</section>
+
+<!-- شاشة الكاميرا -->
+<section id="cam" class="hidden">
+  <video id="vid" playsinline muted autoplay></video>
+  <div id="timer" class="hidden"><b></b><span id="tm">00:00</span></div>
+
+  <div id="box">
+    <div id="grip"><i></i></div>
+    <div id="vp"><div id="txt"></div><div id="guide"></div></div>
+    <div id="rsz"><i></i></div>
+  </div>
+
+  <div id="bar">
+    <button class="ib" id="edit" aria-label="تعديل النص"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+    <button class="ib" id="play" aria-label="تشغيل التمرير"></button>
+    <button id="rec" aria-label="تسجيل"><span></span></button>
+    <button class="ib" id="flip" aria-label="تبديل الكاميرا"><svg viewBox="0 0 24 24"><path d="M20 7h-9a5 5 0 0 0-5 5M4 17h9a5 5 0 0 0 5-5M17 4l3 3-3 3M7 14l-3 3 3 3"/></svg></button>
+    <button class="ib" id="gear" aria-label="الإعدادات"><svg viewBox="0 0 24 24"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.4"/><circle cx="8" cy="17" r="2.4"/></svg></button>
+  </div>
+
+  <div id="sheet" class="hidden">
+    <label><span>حجم الخط <b id="fsv"></b></span><input type="range" id="fs" min="22" max="90" step="1"></label>
+    <label><span>سرعة التمرير <b id="spv"></b></span><input type="range" id="sp" min="8" max="200" step="1"></label>
+    <label><span>شفافية الخلفية <b id="opv"></b></span><input type="range" id="op" min="0" max="95" step="1"></label>
+    <div class="row">عكس المعاينة كالمرآة <input type="checkbox" id="mir"></div>
+    <div class="row">يبدأ التمرير مع التسجيل <input type="checkbox" id="au"></div>
+    <div class="row">عد تنازلي قبل التسجيل <input type="checkbox" id="cd"></div>
+    <button class="big" id="close">تم</button>
+  </div>
+
+  <div id="count" class="hidden"></div>
+  <div id="msg" class="hidden"></div>
+</section>
+
+<!-- شاشة النتيجة -->
+<section id="result" class="hidden">
+  <video id="rv" controls playsinline></video>
+  <div class="btns">
+    <button class="big" id="save">حفظ ومشاركة</button>
+    <button class="big sec" id="again">تسجيل من جديد</button>
+  </div>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+const DEFAULT = "مرحبا بكم،\nأنا حيدر الدعمي،\nوفي هذا الفيديو سأحدثكم عن موضوع مهم،\nاقرأ بهدوء وبنفس طويل،\nخذ وقتك مع كل سطر،\nوالكلمات ستخرج بسلاسة";
+const store = {
+  get(){ try { return JSON.parse(localStorage.getItem('talqeen') || '{}'); } catch(e){ return {}; } },
+  set(o){ try { localStorage.setItem('talqeen', JSON.stringify(o)); } catch(e){} }
+};
+const S = Object.assign({fs:40, speed:45, op:55, mirror:true, auto:true, count:true, text:DEFAULT, box:null}, store.get());
+const save = () => store.set(S);
+
+const vid = $('vid'), box = $('box'), vp = $('vp'), txt = $('txt');
+let stream = null, facing = 'user', wake = null;
+let off = 0, playing = false, dragging = false, last = 0;
+let rec = null, chunks = [], mime = '', tInt = null, t0 = 0, busy = false, url = null;
+
+const ICON_PLAY  = '<svg viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path class="f" d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+
+/* ---------- الإعدادات ---------- */
+function applySettings(){
+  document.documentElement.style.setProperty('--fs', S.fs + 'px');
+  document.documentElement.style.setProperty('--op', S.op / 100);
+  vid.classList.toggle('mirror', S.mirror && facing === 'user');
+  $('fs').value = S.fs; $('sp').value = S.speed; $('op').value = S.op;
+  $('fsv').textContent = S.fs; $('spv').textContent = S.speed; $('opv').textContent = S.op + '%';
+  $('mir').checked = S.mirror; $('au').checked = S.auto; $('cd').checked = S.count;
+  layoutText();
+}
+$('fs').oninput = e => { S.fs = +e.target.value; applySettings(); save(); };
+$('sp').oninput = e => { S.speed = +e.target.value; applySettings(); save(); };
+$('op').oninput = e => { S.op = +e.target.value; applySettings(); save(); };
+$('mir').onchange = e => { S.mirror = e.target.checked; applySettings(); save(); };
+$('au').onchange = e => { S.auto = e.target.checked; save(); };
+$('cd').onchange = e => { S.count = e.target.checked; save(); };
+$('gear').onclick = () => $('sheet').classList.toggle('hidden');
+$('close').onclick = () => $('sheet').classList.add('hidden');
+
+/* ---------- مربع النص ---------- */
+function clampBox(){
+  const W = innerWidth, H = innerHeight, b = S.box;
+  b.w = Math.max(170, Math.min(W, b.w));
+  b.h = Math.max(130, Math.min(H - 120, b.h));
+  b.l = Math.max(0, Math.min(W - b.w, b.l));
+  b.t = Math.max(0, Math.min(H - b.h - 100, b.t));
+}
+function applyBox(){
+  if (!S.box) S.box = { l: innerWidth * .04, t: 60, w: innerWidth * .92, h: innerHeight * .38 };
+  clampBox();
+  const b = S.box;
+  box.style.left = b.l + 'px'; box.style.top = b.t + 'px';
+  box.style.width = b.w + 'px'; box.style.height = b.h + 'px';
+}
+function maxOff(){ return Math.max(0, txt.offsetHeight - vp.clientHeight); }
+function render(){ txt.style.transform = `translate3d(0,${-off}px,0)`; }
+function layoutText(){
+  const vh = vp.clientHeight;
+  txt.style.paddingTop = (vh * .35) + 'px';
+  txt.style.paddingBottom = (vh * .65) + 'px';
+  off = Math.min(off, maxOff()); render();
+}
+addEventListener('resize', () => { if (!$('cam').classList.contains('hidden')) { applyBox(); layoutText(); } });
+
+function drag(el, onStart, onMove, onEnd){
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    const sx = e.clientX, sy = e.clientY, st = onStart();
+    const mv = ev => onMove(ev.clientX - sx, ev.clientY - sy, st);
+    const up = () => {
+      el.removeEventListener('pointermove', mv);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      onEnd && onEnd(st);
+    };
+    el.addEventListener('pointermove', mv);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  });
+}
+// تحريك المربع من المقبض العلوي
+drag($('grip'),
+  () => ({ l: S.box.l, t: S.box.t }),
+  (dx, dy, st) => { S.box.l = st.l + dx; S.box.t = st.t + dy; applyBox(); },
+  save);
+// تغيير الحجم من المقبض السفلي
+drag($('rsz'),
+  () => ({ w: S.box.w, h: S.box.h }),
+  (dx, dy, st) => { S.box.w = st.w + dx; S.box.h = st.h + dy; applyBox(); layoutText(); },
+  save);
+// سحب النص بالإصبع، ولمسة سريعة توقف أو تشغل التمرير
+drag(vp,
+  () => { dragging = true; return { o: off, moved: 0 }; },
+  (dx, dy, st) => { st.moved = Math.max(st.moved, Math.abs(dy), Math.abs(dx)); off = Math.max(0, Math.min(maxOff(), st.o - dy)); render(); },
+  st => { dragging = false; if (st.moved < 6) setPlaying(!playing); });
+
+/* ---------- التمرير التلقائي ---------- */
+function setPlaying(v){
+  playing = v;
+  $('play').innerHTML = v ? ICON_PAUSE : ICON_PLAY;
+  $('play').setAttribute('aria-label', v ? 'إيقاف التمرير' : 'تشغيل التمرير');
+}
+function tick(t){
+  const dt = Math.min(.1, (t - last) / 1000); last = t;
+  if (playing && !dragging){
+    off = Math.min(maxOff(), off + S.speed * (S.fs / 40) * dt);
+    render();
+    if (off >= maxOff()) setPlaying(false);
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(t => { last = t; tick(t); });
+$('play').onclick = () => { if (!playing && off >= maxOff()) { off = 0; render(); } setPlaying(!playing); };
+
+/* ---------- الكاميرا ---------- */
+function showMsg(m){ const el = $('msg'); el.textContent = m; el.classList.remove('hidden'); }
+async function startCamera(){
+  $('msg').classList.add('hidden');
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    showMsg('المتصفح لا يدعم الكاميرا، افتح الصفحة عبر رابط https'); return;
+  }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: facing }, width: { ideal: 1080 }, height: { ideal: 1920 } },
+      audio: { echoCancellation: true, noiseSuppression: true }
+    });
+    vid.srcObject = stream;
+    await vid.play().catch(() => {});
+    applySettings();
+    try { wake = await navigator.wakeLock.request('screen'); } catch(e){}
+  } catch(e){
+    showMsg('تعذر فتح الكاميرا والميكروفون، اسمح لهما من إعدادات المتصفح ثم أعد المحاولة');
+  }
+}
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && stream){ try { wake = await navigator.wakeLock.request('screen'); } catch(e){} }
+});
+$('flip').onclick = () => { facing = facing === 'user' ? 'environment' : 'user'; startCamera(); };
+
+/* ---------- التنقل بين الشاشات ---------- */
+$('script').value = S.text;
+$('open').onclick = async () => {
+  S.text = $('script').value.trim() || DEFAULT; save();
+  txt.textContent = S.text; off = 0;
+  $('editor').classList.add('hidden'); $('cam').classList.remove('hidden');
+  applyBox(); applySettings(); setPlaying(false);
+  if (!stream) await startCamera();
+};
+$('edit').onclick = () => {
+  if (rec && rec.state === 'recording') return;
+  setPlaying(false); $('sheet').classList.add('hidden');
+  $('script').value = S.text;
+  $('cam').classList.add('hidden'); $('editor').classList.remove('hidden');
+};
+
+/* ---------- التسجيل ---------- */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function countdown(){
+  const c = $('count'); c.classList.remove('hidden');
+  for (let n = 3; n >= 1; n--){ c.textContent = n; await sleep(1000); }
+  c.classList.add('hidden');
+}
+function pickMime(){
+  const list = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  if (!window.MediaRecorder) return null;
+  for (const m of list) if (MediaRecorder.isTypeSupported(m)) return m;
+  return '';
+}
+const fmt = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+
+async function startRec(){
+  mime = pickMime();
+  if (mime === null){ showMsg('هذا المتصفح لا يدعم التسجيل، استخدم Safari أو Chrome حديثا'); return; }
+  chunks = [];
+  try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 8000000 } : undefined); }
+  catch(e){ rec = new MediaRecorder(stream); }
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  rec.onstop = onStopped;
+  off = 0; render();
+  rec.start(1000);
+  if (S.auto) setPlaying(true);
+  t0 = Date.now(); $('tm').textContent = '00:00';
+  $('timer').classList.remove('hidden');
+  tInt = setInterval(() => { $('tm').textContent = fmt(Math.floor((Date.now() - t0) / 1000)); }, 250);
+  $('rec').classList.add('on'); $('flip').disabled = true; $('edit').disabled = true;
+}
+function stopRec(){
+  if (!rec || rec.state !== 'recording') return;
+  rec.stop(); setPlaying(false); clearInterval(tInt);
+  $('timer').classList.add('hidden');
+  $('rec').classList.remove('on'); $('flip').disabled = false; $('edit').disabled = false;
+}
+function onStopped(){
+  const type = (rec && rec.mimeType) || mime || 'video/mp4';
+  const blob = new Blob(chunks, { type });
+  if (url) URL.revokeObjectURL(url);
+  url = URL.createObjectURL(blob);
+  $('rv').src = url; $('rv').dataset.type = type;
+  $('result').classList.remove('hidden');
+  window._blob = blob;
+}
+$('rec').onclick = async () => {
+  if (busy) return;
+  if (rec && rec.state === 'recording'){ stopRec(); return; }
+  if (!stream) return;
+  busy = true;
+  try { if (S.count) await countdown(); await startRec(); } finally { busy = false; }
+};
+
+/* ---------- النتيجة ---------- */
+$('save').onclick = async () => {
+  const blob = window._blob; if (!blob) return;
+  const ext = blob.type.includes('mp4') ? '.mp4' : '.webm';
+  const name = 'video-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + ext;
+  const file = new File([blob], name, { type: blob.type });
+  if (navigator.canShare && navigator.canShare({ files: [file] })){
+    try { await navigator.share({ files: [file] }); return; } catch(e){ if (e && e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+};
+$('again').onclick = () => {
+  $('rv').pause(); $('rv').removeAttribute('src'); $('rv').load();
+  $('result').classList.add('hidden');
+  off = 0; render();
+};
+
+applySettings();
+txt.textContent = S.text;
+setPlaying(false);
+</script>
+</body>
+</html>
