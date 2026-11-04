@@ -27,16 +27,20 @@ button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer
 
 /* camera */
 #cam{position:fixed;inset:0;background:#000}
-#vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-#vid.mirror{transform:scaleX(-1)}
+#vid{position:absolute;width:2px;height:2px;opacity:0;pointer-events:none}
+#cv{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+#cv.mirror{transform:scaleX(-1)}
 #msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:32px;line-height:1.9;font-size:18px;background:rgba(0,0,0,.8);z-index:5}
 
 /* teleprompter box */
 #box{position:absolute;display:flex;flex-direction:column;background:rgba(0,0,0,var(--op));border-radius:18px;overflow:hidden;touch-action:none;z-index:2}
 #grip,#rsz{flex:none;height:30px;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:grab}
 #grip i,#rsz i{display:block;width:46px;height:5px;border-radius:3px;background:rgba(255,255,255,.55)}
-#rsz{height:26px}
-#rsz i{width:26px;transform:rotate(-0deg)}
+#ctl{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;padding:4px 8px 8px;position:relative}
+#ctl button{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.2);font-size:26px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center}
+#ctl .sv{min-width:74px;text-align:center;font-size:14px;color:#e6e8ec;font-variant-numeric:tabular-nums}
+#rsz{position:absolute;left:4px;bottom:4px;width:40px;height:40px}
+#rsz i{width:16px;height:16px;border-radius:0;background:none;border-left:3px solid rgba(255,255,255,.6);border-bottom:3px solid rgba(255,255,255,.6)}
 #vp{position:relative;flex:1;overflow:hidden;touch-action:none;-webkit-mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent)}
 #txt{white-space:pre-wrap;word-break:break-word;text-align:right;direction:rtl;font-size:var(--fs);line-height:1.75;font-weight:600;padding:0 18px;will-change:transform;text-shadow:0 1px 3px rgba(0,0,0,.6)}
 #guide{position:absolute;right:0;left:0;top:35%;height:0;border-top:2px solid rgba(255,214,10,.55);pointer-events:none}
@@ -90,12 +94,18 @@ button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer
 <!-- شاشة الكاميرا -->
 <section id="cam" class="hidden">
   <video id="vid" playsinline muted autoplay></video>
+  <canvas id="cv" width="1080" height="1920"></canvas>
   <div id="timer" class="hidden"><b></b><span id="tm">00:00</span></div>
 
   <div id="box">
     <div id="grip"><i></i></div>
     <div id="vp"><div id="txt"></div><div id="guide"></div></div>
-    <div id="rsz"><i></i></div>
+    <div id="ctl">
+      <button id="slow" aria-label="أبطأ">−</button>
+      <span class="sv">السرعة <b id="spd"></b></span>
+      <button id="fast" aria-label="أسرع">+</button>
+      <div id="rsz"><i></i></div>
+    </div>
   </div>
 
   <div id="bar">
@@ -109,6 +119,7 @@ button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer
   <div id="sheet" class="hidden">
     <label><span>حجم الخط <b id="fsv"></b></span><input type="range" id="fs" min="22" max="90" step="1"></label>
     <label><span>سرعة التمرير <b id="spv"></b></span><input type="range" id="sp" min="8" max="200" step="1"></label>
+    <label><span>تقريب الصورة <b id="zmv"></b></span><input type="range" id="zm" min="100" max="200" step="5"></label>
     <label><span>شفافية الخلفية <b id="opv"></b></span><input type="range" id="op" min="0" max="95" step="1"></label>
     <div class="row">عكس المعاينة كالمرآة <input type="checkbox" id="mir"></div>
     <div class="row">يبدأ التمرير مع التسجيل <input type="checkbox" id="au"></div>
@@ -136,7 +147,7 @@ const store = {
   get(){ try { return JSON.parse(localStorage.getItem('talqeen') || '{}'); } catch(e){ return {}; } },
   set(o){ try { localStorage.setItem('talqeen', JSON.stringify(o)); } catch(e){} }
 };
-const S = Object.assign({fs:40, speed:45, op:55, mirror:true, auto:true, count:true, text:DEFAULT, box:null}, store.get());
+const S = Object.assign({zoom:100, fs:40, speed:45, op:55, mirror:true, auto:true, count:true, text:DEFAULT, box:null}, store.get());
 const save = () => store.set(S);
 
 const vid = $('vid'), box = $('box'), vp = $('vp'), txt = $('txt');
@@ -151,7 +162,9 @@ const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path class="f" d="M6 5h4v14H6zM14 
 function applySettings(){
   document.documentElement.style.setProperty('--fs', S.fs + 'px');
   document.documentElement.style.setProperty('--op', S.op / 100);
-  vid.classList.toggle('mirror', S.mirror && facing === 'user');
+  $('cv').classList.toggle('mirror', S.mirror && facing === 'user');
+  $('zm').value = S.zoom; $('zmv').textContent = (S.zoom/100).toFixed(2).replace(/0$/,'') + 'x';
+  $('spd').textContent = S.speed;
   $('fs').value = S.fs; $('sp').value = S.speed; $('op').value = S.op;
   $('fsv').textContent = S.fs; $('spv').textContent = S.speed; $('opv').textContent = S.op + '%';
   $('mir').checked = S.mirror; $('au').checked = S.auto; $('cd').checked = S.count;
@@ -159,10 +172,15 @@ function applySettings(){
 }
 $('fs').oninput = e => { S.fs = +e.target.value; applySettings(); save(); };
 $('sp').oninput = e => { S.speed = +e.target.value; applySettings(); save(); };
+$('zm').oninput = e => { S.zoom = +e.target.value; applySettings(); save(); };
 $('op').oninput = e => { S.op = +e.target.value; applySettings(); save(); };
 $('mir').onchange = e => { S.mirror = e.target.checked; applySettings(); save(); };
 $('au').onchange = e => { S.auto = e.target.checked; save(); };
 $('cd').onchange = e => { S.count = e.target.checked; save(); };
+const bump = f => { S.speed = Math.round(Math.max(5, Math.min(300, S.speed * f))); applySettings(); save(); };
+$('slow').onclick = () => bump(1/1.2);
+$('fast').onclick = () => bump(1.2);
+['slow','fast'].forEach(id => $(id).addEventListener('pointerdown', e => e.stopPropagation()));
 $('gear').onclick = () => $('sheet').classList.toggle('hidden');
 $('close').onclick = () => $('sheet').classList.add('hidden');
 
@@ -215,8 +233,8 @@ drag($('grip'),
   save);
 // تغيير الحجم من المقبض السفلي
 drag($('rsz'),
-  () => ({ w: S.box.w, h: S.box.h }),
-  (dx, dy, st) => { S.box.w = st.w + dx; S.box.h = st.h + dy; applyBox(); layoutText(); },
+  () => ({ w: S.box.w, h: S.box.h, l: S.box.l }),
+  (dx, dy, st) => { S.box.w = st.w - dx; S.box.l = st.l + dx; S.box.h = st.h + dy; applyBox(); layoutText(); },
   save);
 // سحب النص بالإصبع، ولمسة سريعة توقف أو تشغل التمرير
 drag(vp,
@@ -242,6 +260,20 @@ function tick(t){
 requestAnimationFrame(t => { last = t; tick(t); });
 $('play').onclick = () => { if (!playing && off >= maxOff()) { off = 0; render(); } setPlaying(!playing); };
 
+/* ---------- الرسم على لوحة عمودية 1080x1920 ---------- */
+const cv = $('cv'), cx = cv.getContext('2d');
+function draw(){
+  const vw = vid.videoWidth, vh = vid.videoHeight;
+  if (vw && vh){
+    const z = S.zoom / 100;
+    const sc = Math.max(cv.width / vw, cv.height / vh) * z;
+    const dw = vw * sc, dh = vh * sc;
+    cx.drawImage(vid, (cv.width - dw) / 2, (cv.height - dh) / 2, dw, dh);
+  }
+  if (vid.requestVideoFrameCallback) vid.requestVideoFrameCallback(draw); else requestAnimationFrame(draw);
+}
+vid.addEventListener('loadedmetadata', () => { if (!vid._drawing){ vid._drawing = true; draw(); } });
+
 /* ---------- الكاميرا ---------- */
 function showMsg(m){ const el = $('msg'); el.textContent = m; el.classList.remove('hidden'); }
 async function startCamera(){
@@ -252,7 +284,7 @@ async function startCamera(){
   }
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: facing }, width: { ideal: 1080 }, height: { ideal: 1920 } },
+      video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1440 }, frameRate: { ideal: 30 } },
       audio: { echoCancellation: true, noiseSuppression: true }
     });
     vid.srcObject = stream;
@@ -303,8 +335,13 @@ async function startRec(){
   mime = pickMime();
   if (mime === null){ showMsg('هذا المتصفح لا يدعم التسجيل، استخدم Safari أو Chrome حديثا'); return; }
   chunks = [];
-  try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 8000000 } : undefined); }
-  catch(e){ rec = new MediaRecorder(stream); }
+  let src = stream;
+  if (cv.captureStream){
+    src = cv.captureStream(30);
+    stream.getAudioTracks().forEach(t => src.addTrack(t));
+  }
+  try { rec = new MediaRecorder(src, mime ? { mimeType: mime, videoBitsPerSecond: 10000000, audioBitsPerSecond: 128000 } : undefined); }
+  catch(e){ rec = new MediaRecorder(src); }
   rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
   rec.onstop = onStopped;
   off = 0; render();
