@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="تحميل">
+<meta name="theme-color" content="#0d0f14">
+<title>تحميل الفيديو</title>
+<link rel="apple-touch-icon" href="tahmeel-icon-180.png">
+<link rel="icon" href="tahmeel-icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d0f14;--card:#161a22;--line:#262c38;--txt:#eef1f6;--mut:#8b93a5;--acc:#10b981;--err:#f87171}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:"IBM Plex Sans Arabic",-apple-system,system-ui,sans-serif;
+  padding:calc(env(safe-area-inset-top) + 24px) 18px calc(env(safe-area-inset-bottom) + 30px);min-height:100vh}
+.wrap{max-width:520px;margin:0 auto}
+h1{font-size:26px;margin:0 0 4px;font-weight:700}
+.sub{color:var(--mut);font-size:14px;margin:0 0 22px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.chip{font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:99px;color:var(--mut)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
+input{width:100%;background:#0f1218;border:1px solid var(--line);color:var(--txt);border-radius:12px;padding:14px;
+  font-size:16px;direction:ltr;text-align:left;font-family:inherit;outline:none}
+input:focus{border-color:var(--acc)}
+.row{display:flex;gap:8px;margin-top:10px}
+button,.btn{flex:1;border:0;border-radius:12px;padding:14px;font-size:16px;font-weight:600;font-family:inherit;
+  cursor:pointer;text-align:center;text-decoration:none;display:inline-block}
+.pri{background:var(--acc);color:#04130d}
+.sec{background:#222835;color:var(--txt)}
+button:disabled{opacity:.5}
+.status{margin:16px 2px;font-size:14px;color:var(--mut);min-height:20px;display:flex;align-items:center;gap:10px}
+.status.err{color:var(--err)}
+.spin{width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+.item{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-bottom:14px}
+video,.item img{width:100%;display:block;background:#000;max-height:70vh}
+.meta{padding:12px 14px 4px;font-size:14px}
+.meta b{display:block;font-size:15px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta span{color:var(--mut);font-size:12px}
+.item .row{padding:0 14px 14px}
+.key{margin-top:28px;font-size:13px;color:var(--mut);text-align:center}
+.key a{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>تحميل الفيديو</h1>
+  <p class="sub">الصق الرابط واحفظ الفيديو مباشرة بلا اعلانات</p>
+  <div class="chips"><span class="chip">انستغرام</span><span class="chip">فيسبوك</span><span class="chip">اكس</span><span class="chip">تيك توك</span><span class="chip">يوتيوب</span></div>
+
+  <div class="box">
+    <input id="url" type="url" placeholder="https://www.instagram.com/reel/..." autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="row">
+      <button class="sec" id="paste">لصق</button>
+      <button class="pri" id="go">تحميل</button>
+    </div>
+  </div>
+
+  <div class="status" id="st"></div>
+  <div id="out"></div>
+  <div class="key"><a href="#" id="chg">تغيير المفتاح</a></div>
+</div>
+<script>
+const API = "https://ig-manager.tailb8ca10.ts.net/dl";
+const $ = id => document.getElementById(id);
+const store = {get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+// key: from #k=... once, then kept on the phone (never stored in this public repo)
+const hk = new URLSearchParams(location.hash.slice(1)).get("k");
+if (hk) { store.set("dl_key", hk); history.replaceState(null, "", location.pathname + location.search); }
+function key(){ let k = store.get("dl_key"); if(!k){ k = prompt("اكتب مفتاح التحميل"); if(k) store.set("dl_key", k.trim()); } return k; }
+$("chg").onclick = e => { e.preventDefault(); const k = prompt("المفتاح الجديد"); if(k) store.set("dl_key", k.trim()); };
+
+function status(t, kind){ const s=$("st"); s.className="status"+(kind==="err"?" err":""); s.innerHTML=(kind==="load"?'<div class="spin"></div>':"")+"<span></span>"; s.lastChild.textContent=t||""; }
+function size(b){ return b>1048576 ? (b/1048576).toFixed(1)+" MB" : Math.round(b/1024)+" KB"; }
+function dur(s){ if(!s) return ""; s=Math.round(s); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function pick(t){ const m = t.match(/https?:\/\/\S+/); return m ? m[0] : t.trim(); }
+
+$("paste").onclick = async () => {
+  try { const t = await navigator.clipboard.readText(); $("url").value = pick(t); if($("url").value) go(); }
+  catch(e){ $("url").focus(); status("اضغط مطولا داخل الخانة واختر لصق"); }
+};
+$("go").onclick = () => go();
+$("url").addEventListener("keydown", e => { if(e.key==="Enter") go(); });
+
+async function go(){
+  const url = pick($("url").value); if(!url) return status("الصق الرابط اولا","err");
+  const k = key(); if(!k) return status("يحتاج مفتاح التحميل","err");
+  $("go").disabled = true; $("out").innerHTML = ""; status("جار التحميل، ممكن ياخذ دقيقة...","load");
+  try {
+    const r = await fetch(API + "/api/fetch", {method:"POST", headers:{"Content-Type":"application/json","X-Key":k}, body:JSON.stringify({url})});
+    const d = await r.json().catch(()=>({error:"رد غير متوقع من السيرفر"}));
+    if (r.status===401) store.set("dl_key","");
+    if (!r.ok) throw new Error(d.error || "تعذر التحميل");
+    status(d.items.length>1 ? "جاهز، "+d.items.length+" مقاطع" : "جاهز");
+    d.items.forEach(render);
+  } catch(e){ status(e.message==="Failed to fetch" ? "تعذر الاتصال بالسيرفر" : e.message, "err"); }
+  finally { $("go").disabled = false; }
+}
+
+function render(it){
+  const isVid = /\.(mp4|mov|webm|m4v)$/i.test(it.file);
+  const el = document.createElement("div"); el.className = "item";
+  el.innerHTML = (isVid ? '<video controls playsinline preload="metadata"></video>' : '<img alt="">') +
+    '<div class="meta"><b></b><span></span></div><div class="row"><button class="pri sv">حفظ في الصور</button><a class="btn sec dl">تنزيل ملف</a></div>';
+  el.querySelector(isVid ? "video" : "img").src = it.url;
+  el.querySelector("b").textContent = it.title || "فيديو";
+  el.querySelector(".meta span").textContent = [it.uploader, dur(it.duration), size(it.size)].filter(Boolean).join(" · ");
+  el.querySelector(".dl").href = it.url + "?dl=1";
+  const sv = el.querySelector(".sv");
+  sv.onclick = async () => {
+    sv.disabled = true; const old = sv.textContent; sv.textContent = "جار التجهيز...";
+    try {
+      const b = await (await fetch(it.url)).blob();
+      const f = new File([b], it.file, {type: b.type || "video/mp4"});
+      if (navigator.canShare && navigator.canShare({files:[f]})) await navigator.share({files:[f]});
+      else location.href = it.url + "?dl=1";
+    } catch(e){ if (e.name !== "AbortError") location.href = it.url + "?dl=1"; }
+    sv.disabled = false; sv.textContent = old;
+  };
+  $("out").appendChild(el);
+}
+
+// open with ?url=... (from an iPhone Share Sheet shortcut) to start right away
+const qu = new URLSearchParams(location.search).get("url");
+if (qu) { $("url").value = pick(qu); go(); }
+</script>
+</body>
+</html>
