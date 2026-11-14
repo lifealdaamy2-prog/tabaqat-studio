@@ -264,7 +264,7 @@ function openSettings(){
   <div class="acts" style="margin-top:0"><button class="btn b" onclick="exportData()">⬇️ تصدير نسخة</button>
   <button class="btn" onclick="document.getElementById('imp').click()">⬆️ استيراد نسخة</button></div>
   <input type="file" id="imp" accept=".json,application/json" style="display:none" onchange="importData(this.files[0])">
-  <p style="color:var(--mut);font-size:13px;line-height:1.7">البيانات محفوظة على هذا الجهاز فقط، صدّر نسخة احتياطية بين فترة وأخرى، وتقدر تستوردها على التابلت لنقل الديون له</p>
+  <p style="color:var(--mut);font-size:13px">الإصدار <span class="num">3</span></p><p style="color:var(--mut);font-size:13px;line-height:1.7">البيانات محفوظة على هذا الجهاز فقط، صدّر نسخة احتياطية بين فترة وأخرى، وتقدر تستوردها على التابلت لنقل الديون له</p>
   <button class="btn full" style="margin-top:8px" onclick="closeSheet()">إغلاق</button>`)}
 function exportData(){const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});const a=document.createElement('a');
   a.href=URL.createObjectURL(b);a.download='duyun-backup-'+today()+'.json';a.click();toast('تم التصدير')}
@@ -272,7 +272,11 @@ function importData(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{c
   if(!confirm('استبدال البيانات الحالية بالنسخة المستوردة؟'))return;S=Object.assign({cur:'$'},d);save();closeSheet();render();toast('تم الاستيراد ✓')}catch(e){toast('ملف غير صالح')}};r.readAsText(f)}
 
 render();
-if('serviceWorker' in navigator)navigator.serviceWorker.register('duyun-sw.js').catch(()=>{});
+if('serviceWorker' in navigator){
+  const hadCtrl=!!navigator.serviceWorker.controller;let reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadCtrl&&!reloaded){reloaded=true;location.reload()}});
+  navigator.serviceWorker.register('duyun-sw.js',{updateViaCache:'none'}).then(r=>{r.update();document.addEventListener('visibilitychange',()=>{if(!document.hidden)r.update()})}).catch(()=>{});
+}
 </script>
 </body>
 </html>
