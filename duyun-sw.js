@@ -1,4 +1,4 @@
-const C='duyun-v1';
+const C='duyun-v2';
 const CORE=['duyun.html','duyun.webmanifest','duyun-icon-180.png','duyun-icon-192.png','duyun-icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(CORE)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('duyun-')&&k!==C).map(k=>caches.delete(k)))));self.clients.claim()});

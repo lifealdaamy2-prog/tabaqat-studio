@@ -69,6 +69,8 @@ input[type=number]{direction:ltr;text-align:left}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .hist{font-size:13px;color:var(--mut);margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#111827;border:1px solid var(--line);padding:12px 18px;border-radius:12px;z-index:20;display:none}
+.curs{display:flex;gap:8px}.cur{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--mut);font:inherit;font-size:15px;padding:12px 6px;border-radius:12px;cursor:pointer}.cur.on{border-color:var(--acc);color:var(--tx);background:#0d3320;font-weight:600}
+.hero .big{line-height:1.3}
 .sumbox{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
 </style>
 </head>
@@ -88,14 +90,18 @@ input[type=number]{direction:ltr;text-align:left}
 
 <script>
 const KEY='duyun-data-v1';
-let S={debts:[],cur:'₽'};
+let S={debts:[],cur:'$'};
+const CURS=[['$','دولار'],['د.ع','دينار'],['₽','روبل']];
 try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.debts))S=Object.assign(S,d)}catch(e){}
 let view={tab:'people',person:null,q:''};
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('تعذر الحفظ')}};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const today=()=>new Date().toISOString().slice(0,10);
 const fmt=n=>(Math.round(n*100)/100).toLocaleString('en-US');
-const money=n=>`<span class="num">${fmt(n)} ${S.cur}</span>`;
+const curOf=d=>d.cur||'₽';
+const money=(n,c)=>`<span class="num">${fmt(n)} ${c||'₽'}</span>`;
+const addTo=(m,c,v)=>{m[c]=(m[c]||0)+v;return m};
+const moneyMap=(m,sep)=>{const ks=CURS.map(x=>x[0]).filter(c=>m[c]>0.0001);return ks.length?ks.map(c=>money(m[c],c)).join(sep||'<br>'):money(0,'')};
 const fdate=d=>d?`<span class="num">${d.split('-').reverse().join('/')}</span>`:'';
 const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const paidOf=d=>(d.payments||[]).reduce((a,p)=>a+p.amount,0);
@@ -112,11 +118,11 @@ function people(){
   const m={};
   for(const d of S.debts){
     const k=d.person.trim();
-    m[k]=m[k]||{name:k,total:0,remain:0,open:0,count:0,last:''};
-    const p=m[k];p.total+=d.amount;p.remain+=rem(d);p.count++;if(!isPaid(d))p.open++;
+    m[k]=m[k]||{name:k,total:{},remain:{},rsum:0,open:0,count:0,last:''};
+    const p=m[k];addTo(p.total,curOf(d),d.amount);addTo(p.remain,curOf(d),rem(d));p.rsum+=rem(d);p.count++;if(!isPaid(d))p.open++;
     if(d.date>p.last)p.last=d.date;
   }
-  return Object.values(m).sort((a,b)=>b.remain-a.remain||b.last.localeCompare(a.last));
+  return Object.values(m).sort((a,b)=>(b.open>0)-(a.open>0)||b.last.localeCompare(a.last));
 }
 
 function render(){
@@ -124,13 +130,13 @@ function render(){
   document.getElementById('names').innerHTML=people().map(p=>`<option value="${esc(p.name)}">`).join('');
   if(view.person)return renderPerson(M);
   const ps=people();
-  const totalRem=S.debts.reduce((a,d)=>a+rem(d),0);
-  const totalPaid=S.debts.reduce((a,d)=>a+paidOf(d),0);
-  const owing=ps.filter(p=>p.remain>0).length;
+  const totalRem=S.debts.reduce((m,d)=>addTo(m,curOf(d),rem(d)),{});
+  const totalPaid=S.debts.reduce((m,d)=>addTo(m,curOf(d),paidOf(d)),{});
+  const owing=ps.filter(p=>p.rsum>0).length;
   let h=`<div class="hero"><small>المبلغ المتبقي لي عند الناس</small>
-    <div class="big">${money(totalRem)}</div>
+    <div class="big">${moneyMap(totalRem)}</div>
     <div class="row"><div class="pill">أشخاص عليهم دين<b class="num">${owing}</b></div>
-    <div class="pill">تم تسديده<b>${money(totalPaid)}</b></div></div></div>
+    <div class="pill">تم تسديده<b>${moneyMap(totalPaid)}</b></div></div></div>
   <div class="tabs">
     <button class="${view.tab==='people'?'on':''}" onclick="setTab('people')">الأشخاص</button>
     <button class="${view.tab==='open'?'on':''}" onclick="setTab('open')">غير مسددة</button>
@@ -151,7 +157,7 @@ function renderList(){
       <div class="av" style="background:${colorOf(p.name)}22;color:${colorOf(p.name)}">${esc(p.name[0])}</div>
       <div class="info"><div class="name">${esc(p.name)}</div>
       <div class="meta">${p.open?`<span class="num">${p.open}</span> دين مفتوح`:'كل ديونه مسددة ✓'} · آخر دين ${fdate(p.last)}</div></div>
-      <div class="amt ${p.remain>0?'':'ok'}">${p.remain>0?money(p.remain):'✓'}</div></div>`).join('')+`</div>`;
+      <div class="amt ${p.rsum>0?'':'ok'}" style="text-align:left">${p.rsum>0?moneyMap(p.remain):'✓'}</div></div>`).join('')+`</div>`;
   }else{
     const ds=S.debts.filter(d=>(view.tab==='paid'?isPaid(d):!isPaid(d)))
       .filter(d=>!q||d.person.toLowerCase().includes(q)||(d.note||'').toLowerCase().includes(q))
@@ -166,9 +172,9 @@ function debtCard(d,showName){
   return `<div class="card debt">
     <div class="top"><div>${showName?`<div style="font-weight:600;font-size:17px">${esc(d.person)}</div>`:''}
       <div class="note">${fdate(d.date)}${d.note?' · '+esc(d.note):''}</div></div>
-      <div style="text-align:left"><div class="amt ${isPaid(d)?'ok':''}">${money(d.amount)}</div>${tag}</div></div>
-    ${p>0&&!isPaid(d)?`<div class="bar"><i style="width:${pct}%"></i></div><div class="note">تم دفع ${money(p)} · المتبقي <b style="color:var(--warn)">${money(r)}</b></div>`:''}
-    ${(d.payments||[]).length?`<div class="hist">${d.payments.map(x=>`دفعة ${money(x.amount)} بتاريخ ${fdate(x.date)}`).join('<br>')}</div>`:''}
+      <div style="text-align:left"><div class="amt ${isPaid(d)?'ok':''}">${money(d.amount,curOf(d))}</div>${tag}</div></div>
+    ${p>0&&!isPaid(d)?`<div class="bar"><i style="width:${pct}%"></i></div><div class="note">تم دفع ${money(p,curOf(d))} · المتبقي <b style="color:var(--warn)">${money(r,curOf(d))}</b></div>`:''}
+    ${(d.payments||[]).length?`<div class="hist">${d.payments.map(x=>`دفعة ${money(x.amount,curOf(d))} بتاريخ ${fdate(x.date)}`).join('<br>')}</div>`:''}
     <div class="acts">
       ${isPaid(d)?`<button class="btn" onclick="unpay('${d.id}')">↩️ إلغاء التسديد</button>`:
       `<button class="btn g" onclick="payFull('${d.id}')">✓ مسددة</button><button class="btn b" onclick="openPay('${d.id}')">دفعة جزئية</button>`}
@@ -180,21 +186,22 @@ function debtCard(d,showName){
 function renderPerson(M){
   const n=view.person;const ds=S.debts.filter(d=>d.person.trim()===n).sort((a,b)=>isPaid(a)-isPaid(b)||b.date.localeCompare(a.date));
   if(!ds.length){view.person=null;return render()}
-  const r=ds.reduce((a,d)=>a+rem(d),0),t=ds.reduce((a,d)=>a+d.amount,0);
+  const r=ds.reduce((m,d)=>addTo(m,curOf(d),rem(d)),{}),t=ds.reduce((m,d)=>addTo(m,curOf(d),d.amount),{}),rs=ds.reduce((a,d)=>a+rem(d),0);
   M.innerHTML=`<div class="back"><button class="icon-btn" onclick="view.person=null;render()">→</button>
     <div class="av" style="background:${colorOf(n)}22;color:${colorOf(n)}">${esc(n[0])}</div>
     <h2 style="margin:0;font-size:20px;flex:1">${esc(n)}</h2>
     <button class="icon-btn" onclick="shareP()" aria-label="مشاركة">📤</button></div>
-  <div class="sumbox"><div><div style="color:var(--mut);font-size:13px">المتبقي عليه</div><div class="amt ${r>0?'':'ok'}" style="font-size:26px">${money(r)}</div></div>
-   <div style="text-align:left"><div style="color:var(--mut);font-size:13px">مجموع الديون</div><div style="font-weight:600">${money(t)}</div></div></div>
+  <div class="sumbox"><div><div style="color:var(--mut);font-size:13px">المتبقي عليه</div><div class="amt ${rs>0?'':'ok'}" style="font-size:26px">${moneyMap(r)}</div></div>
+   <div style="text-align:left"><div style="color:var(--mut);font-size:13px">مجموع الديون</div><div style="font-weight:600">${moneyMap(t)}</div></div></div>
   <div class="acts" style="margin:0 0 12px">
     <button class="btn b" onclick="openAdd(null,'${esc(n).replace(/'/g,"\\'")}')">＋ دين جديد عليه</button>
-    ${r>0?`<button class="btn g" onclick="payAll()">✓ تسديد الكل</button>`:''}
+    ${rs>0?`<button class="btn g" onclick="payAll()">✓ تسديد الكل</button>`:''}
     <button class="btn" onclick="renamePerson()">✏️ تغيير الاسم</button>
   </div>
   <div class="list">${ds.map(d=>debtCard(d,false)).join('')}</div>`;
 }
 
+function pickCur(b){document.querySelectorAll('.cur').forEach(x=>x.classList.toggle('on',x===b))}
 function setTab(t){view.tab=t;render()}
 function openPerson(n){view.person=n;render();scrollTo(0,0)}
 
@@ -205,7 +212,8 @@ function openAdd(id,name){
   const d=id?S.debts.find(x=>x.id===id):null;
   sheet(`<h2>${d?'تعديل الدين':'دين جديد'}</h2>
   <label>اسم الشخص</label><input id="fName" list="names" placeholder="مثلاً: علي" value="${esc(d?d.person:(name||''))}">
-  <div class="two"><div><label>المبلغ (${S.cur})</label><input id="fAmt" inputmode="decimal" type="text" dir="ltr" placeholder="0" value="${d?d.amount:''}"></div>
+  <label>العملة</label><div class="curs">${CURS.map(([c,n])=>`<button type="button" class="cur ${c===(d?curOf(d):S.cur)?'on':''}" data-c="${c}" onclick="pickCur(this)">${n} <span class="num">${c}</span></button>`).join('')}</div>
+  <div class="two"><div><label>المبلغ</label><input id="fAmt" inputmode="decimal" type="text" dir="ltr" placeholder="0" value="${d?d.amount:''}"></div>
   <div><label>التاريخ</label><input id="fDate" type="date" value="${d?d.date:today()}"></div></div>
   <label>ملاحظة (اختياري)</label><input id="fNote" placeholder="سبب الدين" value="${esc(d?d.note:'')}">
   <div style="margin-top:18px"><button class="btn g full" onclick="saveDebt('${id||''}')">حفظ</button></div>`);
@@ -218,19 +226,20 @@ function saveDebt(id){
   const amount=parseFloat(toEn(document.getElementById('fAmt').value));
   const date=document.getElementById('fDate').value||today();
   const note=document.getElementById('fNote').value.trim();
+  const cur=document.querySelector('.cur.on').dataset.c;S.cur=cur;
   if(!name)return toast('اكتب اسم الشخص');
   if(!(amount>0))return toast('اكتب مبلغ صحيح');
-  if(id){const d=S.debts.find(x=>x.id===id);const old=d.person;Object.assign(d,{person:name,amount,date,note});
+  if(id){const d=S.debts.find(x=>x.id===id);const old=d.person;Object.assign(d,{person:name,amount,date,note,cur});
     if(isPaid(d)&&!d.paidDate)d.paidDate=today();if(!isPaid(d))d.paidDate=null;
     if(view.person===old)view.person=name;}
-  else S.debts.push({id:uid(),person:name,amount,date,note,payments:[],paidDate:null});
+  else S.debts.push({id:uid(),person:name,amount,date,note,cur,payments:[],paidDate:null});
   save();closeSheet();render();toast('تم الحفظ ✓');
 }
 
 function payFull(id){const d=S.debts.find(x=>x.id===id);const r=rem(d);if(r>0)d.payments.push({amount:r,date:today()});d.paidDate=today();save();render();toast('تم تسجيلها مسددة ✓')}
 function unpay(id){if(!confirm('إلغاء التسديد وإرجاع الدين كاملاً؟'))return;const d=S.debts.find(x=>x.id===id);d.payments=[];d.paidDate=null;save();render()}
 function openPay(id){const d=S.debts.find(x=>x.id===id);
-  sheet(`<h2>دفعة جزئية</h2><div style="color:var(--mut)">${esc(d.person)} · المتبقي ${money(rem(d))}</div>
+  sheet(`<h2>دفعة جزئية</h2><div style="color:var(--mut)">${esc(d.person)} · المتبقي ${money(rem(d),curOf(d))}</div>
   <label>المبلغ المدفوع</label><input id="pAmt" inputmode="decimal" dir="ltr" placeholder="0">
   <label>التاريخ</label><input id="pDate" type="date" value="${today()}">
   <div style="margin-top:18px"><button class="btn g full" onclick="savePay('${id}')">تسجيل الدفعة</button></div>`);
@@ -245,14 +254,12 @@ function payAll(){if(!confirm('تسجيل كل ديون '+view.person+' مسدد
 function renamePerson(){const n=prompt('الاسم الجديد',view.person);if(!n||!n.trim())return;
   S.debts.forEach(d=>{if(d.person.trim()===view.person)d.person=n.trim()});view.person=n.trim();save();render()}
 function shareP(){const n=view.person;const ds=S.debts.filter(d=>d.person.trim()===n&&!isPaid(d));
-  const r=ds.reduce((a,d)=>a+rem(d),0);
-  let t=`كشف دين: ${n}\n`+ds.map(d=>`${d.date.split('-').reverse().join('/')}: ${fmt(rem(d))} ${S.cur}${d.note?' ('+d.note+')':''}`).join('\n')+`\nالمتبقي: ${fmt(r)} ${S.cur}`;
+  const r=ds.reduce((m,d)=>addTo(m,curOf(d),rem(d)),{});
+  let t=`كشف دين: ${n}\n`+ds.map(d=>`${d.date.split('-').reverse().join('/')}: ${fmt(rem(d))} ${curOf(d)}${d.note?' ('+d.note+')':''}`).join('\n')+`\nالمتبقي: `+Object.entries(r).map(([c,v])=>fmt(v)+' '+c).join(' + ');
   if(navigator.share)navigator.share({text:t}).catch(()=>{});else{navigator.clipboard.writeText(t);toast('تم النسخ')}}
 
 function openSettings(){
   sheet(`<h2>الإعدادات</h2>
-  <label>العملة</label><select id="sCur" onchange="S.cur=this.value;save();render()">
-  ${['₽','$','IQD','€','₺'].map(c=>`<option ${c===S.cur?'selected':''}>${c}</option>`).join('')}</select>
   <label>نسخة احتياطية</label>
   <div class="acts" style="margin-top:0"><button class="btn b" onclick="exportData()">⬇️ تصدير نسخة</button>
   <button class="btn" onclick="document.getElementById('imp').click()">⬆️ استيراد نسخة</button></div>
@@ -262,7 +269,7 @@ function openSettings(){
 function exportData(){const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});const a=document.createElement('a');
   a.href=URL.createObjectURL(b);a.download='duyun-backup-'+today()+'.json';a.click();toast('تم التصدير')}
 function importData(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.debts))throw 0;
-  if(!confirm('استبدال البيانات الحالية بالنسخة المستوردة؟'))return;S=Object.assign({cur:'₽'},d);save();closeSheet();render();toast('تم الاستيراد ✓')}catch(e){toast('ملف غير صالح')}};r.readAsText(f)}
+  if(!confirm('استبدال البيانات الحالية بالنسخة المستوردة؟'))return;S=Object.assign({cur:'$'},d);save();closeSheet();render();toast('تم الاستيراد ✓')}catch(e){toast('ملف غير صالح')}};r.readAsText(f)}
 
 render();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('duyun-sw.js').catch(()=>{});
