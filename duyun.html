@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cut">
+<title>ديوني</title>
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="duyun.webmanifest">
+<link rel="apple-touch-icon" href="duyun-icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b1220;--card:#131c2e;--card2:#1a2540;--line:#24314f;--tx:#e8edf7;--mut:#8b98b5;--acc:#22c55e;--warn:#f59e0b;--red:#ef4444;--blue:#3b82f6}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:'Readex Pro',system-ui,sans-serif;font-size:16px}
+.num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+.wrap{max-width:900px;margin:0 auto;padding:16px 16px 110px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+header h1{font-size:22px;margin:0;font-weight:700}
+.icon-btn{background:var(--card);border:1px solid var(--line);color:var(--tx);width:44px;height:44px;border-radius:12px;font-size:20px;cursor:pointer}
+.hero{background:linear-gradient(135deg,#166534,#0f766e);border-radius:20px;padding:20px;margin-bottom:14px}
+.hero small{opacity:.85;font-size:14px}
+.hero .big{font-size:38px;font-weight:700;margin:6px 0 12px}
+.hero .row{display:flex;gap:10px}
+.hero .pill{flex:1;background:rgba(0,0,0,.2);border-radius:12px;padding:10px;font-size:13px}
+.hero .pill b{display:block;font-size:18px;margin-top:2px}
+.tabs{display:flex;gap:6px;background:var(--card);padding:5px;border-radius:14px;margin-bottom:12px}
+.tabs button{flex:1;background:none;border:0;color:var(--mut);font:inherit;font-size:15px;padding:10px;border-radius:10px;cursor:pointer}
+.tabs button.on{background:var(--card2);color:var(--tx);font-weight:600}
+.search{width:100%;background:var(--card);border:1px solid var(--line);color:var(--tx);font:inherit;padding:13px 14px;border-radius:12px;margin-bottom:12px;outline:none}
+.list{display:grid;gap:10px}
+@media(min-width:700px){.list.grid2{grid-template-columns:1fr 1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;cursor:pointer}
+.person{display:flex;align-items:center;gap:12px}
+.av{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-weight:700;font-size:20px;flex:none}
+.person .info{flex:1;min-width:0}
+.person .name{font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.person .meta{color:var(--mut);font-size:13px;margin-top:3px}
+.amt{font-weight:700;font-size:19px;color:var(--warn)}
+.amt.ok{color:var(--acc)}
+.debt{display:block}
+.debt .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.debt .note{color:var(--mut);font-size:14px;margin-top:4px}
+.tag{display:inline-block;font-size:12px;padding:3px 9px;border-radius:20px;background:#3b2a08;color:var(--warn)}
+.tag.paid{background:#0d3320;color:var(--acc)}
+.tag.part{background:#14284d;color:#93c5fd}
+.bar{height:6px;background:var(--line);border-radius:4px;margin-top:10px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--acc)}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.btn{border:0;font:inherit;font-size:14px;padding:10px 14px;border-radius:10px;cursor:pointer;background:var(--card2);color:var(--tx)}
+.btn.g{background:var(--acc);color:#052e16;font-weight:600}
+.btn.b{background:var(--blue);color:#fff}
+.btn.r{background:#3a1515;color:#fca5a5}
+.btn.full{width:100%;padding:14px;font-size:16px}
+.empty{text-align:center;color:var(--mut);padding:50px 10px}
+.empty div{font-size:46px;margin-bottom:10px}
+.fab{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--acc);color:#052e16;border:0;font:inherit;font-weight:700;font-size:17px;padding:16px 30px;border-radius:40px;box-shadow:0 10px 30px rgba(34,197,94,.35);cursor:pointer;z-index:5}
+.back{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:10}
+.sheet-bg.on{display:flex}
+.sheet{background:var(--card);width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+@media(min-width:700px){.sheet-bg{align-items:center}.sheet{border-radius:22px}}
+.sheet h2{margin:0 0 14px;font-size:20px}
+label{display:block;font-size:14px;color:var(--mut);margin:12px 0 6px}
+input,textarea,select{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--tx);font:inherit;font-size:17px;padding:13px;border-radius:12px;outline:none}
+input:focus,textarea:focus{border-color:var(--acc)}
+input[type=number]{direction:ltr;text-align:left}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hist{font-size:13px;color:var(--mut);margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#111827;border:1px solid var(--line);padding:12px 18px;border-radius:12px;z-index:20;display:none}
+.sumbox{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📒 ديوني</h1>
+    <button class="icon-btn" onclick="openSettings()" aria-label="الإعدادات">⚙️</button>
+  </header>
+  <div id="main"></div>
+</div>
+<button class="fab" onclick="openAdd()">＋ دين جديد</button>
+
+<div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+<datalist id="names"></datalist>
+
+<script>
+const KEY='duyun-data-v1';
+let S={debts:[],cur:'₽'};
+try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.debts))S=Object.assign(S,d)}catch(e){}
+let view={tab:'people',person:null,q:''};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('تعذر الحفظ')}};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const today=()=>new Date().toISOString().slice(0,10);
+const fmt=n=>(Math.round(n*100)/100).toLocaleString('en-US');
+const money=n=>`<span class="num">${fmt(n)} ${S.cur}</span>`;
+const fdate=d=>d?`<span class="num">${d.split('-').reverse().join('/')}</span>`:'';
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const paidOf=d=>(d.payments||[]).reduce((a,p)=>a+p.amount,0);
+const rem=d=>Math.max(0,d.amount-paidOf(d));
+const isPaid=d=>rem(d)<=0.0001;
+const colors=['#f59e0b','#3b82f6','#a855f7','#ec4899','#14b8a6','#ef4444','#84cc16','#06b6d4'];
+const colorOf=n=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))>>>0;return colors[h%colors.length]};
+// English digits always: convert any Arabic-Indic / Persian digits typed
+const toEn=s=>String(s).replace(/[٠-٩]/g,d=>d.charCodeAt(0)-1632).replace(/[۰-۹]/g,d=>d.charCodeAt(0)-1776).replace(/[٫,]/g,'.');
+
+function toast(t){const e=document.getElementById('toast');e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',2000)}
+
+function people(){
+  const m={};
+  for(const d of S.debts){
+    const k=d.person.trim();
+    m[k]=m[k]||{name:k,total:0,remain:0,open:0,count:0,last:''};
+    const p=m[k];p.total+=d.amount;p.remain+=rem(d);p.count++;if(!isPaid(d))p.open++;
+    if(d.date>p.last)p.last=d.date;
+  }
+  return Object.values(m).sort((a,b)=>b.remain-a.remain||b.last.localeCompare(a.last));
+}
+
+function render(){
+  const M=document.getElementById('main');
+  document.getElementById('names').innerHTML=people().map(p=>`<option value="${esc(p.name)}">`).join('');
+  if(view.person)return renderPerson(M);
+  const ps=people();
+  const totalRem=S.debts.reduce((a,d)=>a+rem(d),0);
+  const totalPaid=S.debts.reduce((a,d)=>a+paidOf(d),0);
+  const owing=ps.filter(p=>p.remain>0).length;
+  let h=`<div class="hero"><small>المبلغ المتبقي لي عند الناس</small>
+    <div class="big">${money(totalRem)}</div>
+    <div class="row"><div class="pill">أشخاص عليهم دين<b class="num">${owing}</b></div>
+    <div class="pill">تم تسديده<b>${money(totalPaid)}</b></div></div></div>
+  <div class="tabs">
+    <button class="${view.tab==='people'?'on':''}" onclick="setTab('people')">الأشخاص</button>
+    <button class="${view.tab==='open'?'on':''}" onclick="setTab('open')">غير مسددة</button>
+    <button class="${view.tab==='paid'?'on':''}" onclick="setTab('paid')">المسددة</button>
+  </div>
+  <input class="search" placeholder="🔍 ابحث باسم أو ملاحظة" value="${esc(view.q)}" oninput="view.q=this.value;renderList()">
+  <div id="listArea"></div>`;
+  M.innerHTML=h;renderList();
+}
+
+function renderList(){
+  const A=document.getElementById('listArea');const q=view.q.trim().toLowerCase();
+  if(!S.debts.length){A.innerHTML=`<div class="empty"><div>📭</div>ما في ديون مسجلة بعد<br>اضغط على دين جديد للبدء</div>`;return}
+  if(view.tab==='people'){
+    const ps=people().filter(p=>!q||p.name.toLowerCase().includes(q));
+    if(!ps.length){A.innerHTML=`<div class="empty">لا نتائج</div>`;return}
+    A.innerHTML=`<div class="list grid2">`+ps.map(p=>`<div class="card person" onclick="openPerson('${esc(p.name).replace(/'/g,"\\'")}')">
+      <div class="av" style="background:${colorOf(p.name)}22;color:${colorOf(p.name)}">${esc(p.name[0])}</div>
+      <div class="info"><div class="name">${esc(p.name)}</div>
+      <div class="meta">${p.open?`<span class="num">${p.open}</span> دين مفتوح`:'كل ديونه مسددة ✓'} · آخر دين ${fdate(p.last)}</div></div>
+      <div class="amt ${p.remain>0?'':'ok'}">${p.remain>0?money(p.remain):'✓'}</div></div>`).join('')+`</div>`;
+  }else{
+    const ds=S.debts.filter(d=>(view.tab==='paid'?isPaid(d):!isPaid(d)))
+      .filter(d=>!q||d.person.toLowerCase().includes(q)||(d.note||'').toLowerCase().includes(q))
+      .sort((a,b)=>b.date.localeCompare(a.date));
+    A.innerHTML=ds.length?`<div class="list">`+ds.map(d=>debtCard(d,true)).join('')+`</div>`:`<div class="empty">${view.tab==='paid'?'لا توجد ديون مسددة':'لا توجد ديون مفتوحة 🎉'}</div>`;
+  }
+}
+
+function debtCard(d,showName){
+  const p=paidOf(d),r=rem(d),pct=Math.min(100,p/d.amount*100);
+  const tag=isPaid(d)?`<span class="tag paid">مسددة ✓ ${fdate(d.paidDate)}</span>`:p>0?`<span class="tag part">مسدد جزئياً</span>`:`<span class="tag">غير مسددة</span>`;
+  return `<div class="card debt">
+    <div class="top"><div>${showName?`<div style="font-weight:600;font-size:17px">${esc(d.person)}</div>`:''}
+      <div class="note">${fdate(d.date)}${d.note?' · '+esc(d.note):''}</div></div>
+      <div style="text-align:left"><div class="amt ${isPaid(d)?'ok':''}">${money(d.amount)}</div>${tag}</div></div>
+    ${p>0&&!isPaid(d)?`<div class="bar"><i style="width:${pct}%"></i></div><div class="note">تم دفع ${money(p)} · المتبقي <b style="color:var(--warn)">${money(r)}</b></div>`:''}
+    ${(d.payments||[]).length?`<div class="hist">${d.payments.map(x=>`دفعة ${money(x.amount)} بتاريخ ${fdate(x.date)}`).join('<br>')}</div>`:''}
+    <div class="acts">
+      ${isPaid(d)?`<button class="btn" onclick="unpay('${d.id}')">↩️ إلغاء التسديد</button>`:
+      `<button class="btn g" onclick="payFull('${d.id}')">✓ مسددة</button><button class="btn b" onclick="openPay('${d.id}')">دفعة جزئية</button>`}
+      <button class="btn" onclick="openAdd('${d.id}')">✏️ تعديل</button>
+      <button class="btn r" onclick="del('${d.id}')">🗑 حذف</button>
+    </div></div>`;
+}
+
+function renderPerson(M){
+  const n=view.person;const ds=S.debts.filter(d=>d.person.trim()===n).sort((a,b)=>isPaid(a)-isPaid(b)||b.date.localeCompare(a.date));
+  if(!ds.length){view.person=null;return render()}
+  const r=ds.reduce((a,d)=>a+rem(d),0),t=ds.reduce((a,d)=>a+d.amount,0);
+  M.innerHTML=`<div class="back"><button class="icon-btn" onclick="view.person=null;render()">→</button>
+    <div class="av" style="background:${colorOf(n)}22;color:${colorOf(n)}">${esc(n[0])}</div>
+    <h2 style="margin:0;font-size:20px;flex:1">${esc(n)}</h2>
+    <button class="icon-btn" onclick="shareP()" aria-label="مشاركة">📤</button></div>
+  <div class="sumbox"><div><div style="color:var(--mut);font-size:13px">المتبقي عليه</div><div class="amt ${r>0?'':'ok'}" style="font-size:26px">${money(r)}</div></div>
+   <div style="text-align:left"><div style="color:var(--mut);font-size:13px">مجموع الديون</div><div style="font-weight:600">${money(t)}</div></div></div>
+  <div class="acts" style="margin:0 0 12px">
+    <button class="btn b" onclick="openAdd(null,'${esc(n).replace(/'/g,"\\'")}')">＋ دين جديد عليه</button>
+    ${r>0?`<button class="btn g" onclick="payAll()">✓ تسديد الكل</button>`:''}
+    <button class="btn" onclick="renamePerson()">✏️ تغيير الاسم</button>
+  </div>
+  <div class="list">${ds.map(d=>debtCard(d,false)).join('')}</div>`;
+}
+
+function setTab(t){view.tab=t;render()}
+function openPerson(n){view.person=n;render();scrollTo(0,0)}
+
+function sheet(h){document.getElementById('sheet').innerHTML=h;document.getElementById('sheetBg').classList.add('on')}
+function closeSheet(){document.getElementById('sheetBg').classList.remove('on')}
+
+function openAdd(id,name){
+  const d=id?S.debts.find(x=>x.id===id):null;
+  sheet(`<h2>${d?'تعديل الدين':'دين جديد'}</h2>
+  <label>اسم الشخص</label><input id="fName" list="names" placeholder="مثلاً: علي" value="${esc(d?d.person:(name||''))}">
+  <div class="two"><div><label>المبلغ (${S.cur})</label><input id="fAmt" inputmode="decimal" type="text" dir="ltr" placeholder="0" value="${d?d.amount:''}"></div>
+  <div><label>التاريخ</label><input id="fDate" type="date" value="${d?d.date:today()}"></div></div>
+  <label>ملاحظة (اختياري)</label><input id="fNote" placeholder="سبب الدين" value="${esc(d?d.note:'')}">
+  <div style="margin-top:18px"><button class="btn g full" onclick="saveDebt('${id||''}')">حفظ</button></div>`);
+  setTimeout(()=>document.getElementById(d||name?'fAmt':'fName').focus(),100);
+  const a=document.getElementById('fAmt');a.addEventListener('input',()=>{const v=toEn(a.value).replace(/[^\d.]/g,'');if(v!==a.value)a.value=v});
+}
+
+function saveDebt(id){
+  const name=document.getElementById('fName').value.trim();
+  const amount=parseFloat(toEn(document.getElementById('fAmt').value));
+  const date=document.getElementById('fDate').value||today();
+  const note=document.getElementById('fNote').value.trim();
+  if(!name)return toast('اكتب اسم الشخص');
+  if(!(amount>0))return toast('اكتب مبلغ صحيح');
+  if(id){const d=S.debts.find(x=>x.id===id);const old=d.person;Object.assign(d,{person:name,amount,date,note});
+    if(isPaid(d)&&!d.paidDate)d.paidDate=today();if(!isPaid(d))d.paidDate=null;
+    if(view.person===old)view.person=name;}
+  else S.debts.push({id:uid(),person:name,amount,date,note,payments:[],paidDate:null});
+  save();closeSheet();render();toast('تم الحفظ ✓');
+}
+
+function payFull(id){const d=S.debts.find(x=>x.id===id);const r=rem(d);if(r>0)d.payments.push({amount:r,date:today()});d.paidDate=today();save();render();toast('تم تسجيلها مسددة ✓')}
+function unpay(id){if(!confirm('إلغاء التسديد وإرجاع الدين كاملاً؟'))return;const d=S.debts.find(x=>x.id===id);d.payments=[];d.paidDate=null;save();render()}
+function openPay(id){const d=S.debts.find(x=>x.id===id);
+  sheet(`<h2>دفعة جزئية</h2><div style="color:var(--mut)">${esc(d.person)} · المتبقي ${money(rem(d))}</div>
+  <label>المبلغ المدفوع</label><input id="pAmt" inputmode="decimal" dir="ltr" placeholder="0">
+  <label>التاريخ</label><input id="pDate" type="date" value="${today()}">
+  <div style="margin-top:18px"><button class="btn g full" onclick="savePay('${id}')">تسجيل الدفعة</button></div>`);
+  setTimeout(()=>document.getElementById('pAmt').focus(),100)}
+function savePay(id){const d=S.debts.find(x=>x.id===id);let a=parseFloat(toEn(document.getElementById('pAmt').value));
+  if(!(a>0))return toast('اكتب مبلغ صحيح');a=Math.min(a,rem(d));
+  d.payments.push({amount:a,date:document.getElementById('pDate').value||today()});if(isPaid(d))d.paidDate=today();
+  save();closeSheet();render();toast(isPaid(d)?'اكتمل التسديد ✓':'تم تسجيل الدفعة')}
+function del(id){if(!confirm('حذف هذا الدين نهائياً؟'))return;S.debts=S.debts.filter(x=>x.id!==id);save();render();toast('تم الحذف')}
+function payAll(){if(!confirm('تسجيل كل ديون '+view.person+' مسددة؟'))return;
+  S.debts.filter(d=>d.person.trim()===view.person&&!isPaid(d)).forEach(d=>{d.payments.push({amount:rem(d),date:today()});d.paidDate=today()});save();render();toast('تم ✓')}
+function renamePerson(){const n=prompt('الاسم الجديد',view.person);if(!n||!n.trim())return;
+  S.debts.forEach(d=>{if(d.person.trim()===view.person)d.person=n.trim()});view.person=n.trim();save();render()}
+function shareP(){const n=view.person;const ds=S.debts.filter(d=>d.person.trim()===n&&!isPaid(d));
+  const r=ds.reduce((a,d)=>a+rem(d),0);
+  let t=`كشف دين: ${n}\n`+ds.map(d=>`${d.date.split('-').reverse().join('/')}: ${fmt(rem(d))} ${S.cur}${d.note?' ('+d.note+')':''}`).join('\n')+`\nالمتبقي: ${fmt(r)} ${S.cur}`;
+  if(navigator.share)navigator.share({text:t}).catch(()=>{});else{navigator.clipboard.writeText(t);toast('تم النسخ')}}
+
+function openSettings(){
+  sheet(`<h2>الإعدادات</h2>
+  <label>العملة</label><select id="sCur" onchange="S.cur=this.value;save();render()">
+  ${['₽','$','IQD','€','₺'].map(c=>`<option ${c===S.cur?'selected':''}>${c}</option>`).join('')}</select>
+  <label>نسخة احتياطية</label>
+  <div class="acts" style="margin-top:0"><button class="btn b" onclick="exportData()">⬇️ تصدير نسخة</button>
+  <button class="btn" onclick="document.getElementById('imp').click()">⬆️ استيراد نسخة</button></div>
+  <input type="file" id="imp" accept=".json,application/json" style="display:none" onchange="importData(this.files[0])">
+  <p style="color:var(--mut);font-size:13px;line-height:1.7">البيانات محفوظة على هذا الجهاز فقط، صدّر نسخة احتياطية بين فترة وأخرى، وتقدر تستوردها على التابلت لنقل الديون له</p>
+  <button class="btn full" style="margin-top:8px" onclick="closeSheet()">إغلاق</button>`)}
+function exportData(){const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download='duyun-backup-'+today()+'.json';a.click();toast('تم التصدير')}
+function importData(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.debts))throw 0;
+  if(!confirm('استبدال البيانات الحالية بالنسخة المستوردة؟'))return;S=Object.assign({cur:'₽'},d);save();closeSheet();render();toast('تم الاستيراد ✓')}catch(e){toast('ملف غير صالح')}};r.readAsText(f)}
+
+render();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('duyun-sw.js').catch(()=>{});
+</script>
+</body>
+</html>
